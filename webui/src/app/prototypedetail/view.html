@@ -1,0 +1,88 @@
+<div class="row">
+    <div class="col-sm-12 col-md-12">
+        <h3 class="m-t-xs prototypedetail-title">
+            {{ vm.libraryName }}.{{ vm.prototypeName }} <span class="prototypedetail-description">PROTOTYPE</span>
+            <button ng-if="vm.libraryName == 'minemeldlocal'" tooltip-popup-delay="500" tooltip="delete this prototype" type="button" class="config-action btn btn-config-action btn-sm" ng-click="vm.delete()">
+                <span class="glyphicon glyphicon-remove"></span> REMOVE
+            </button>
+            <button tooltip-popup-delay="500" tooltip="new prototype from this" type="button" class="config-action btn btn-config-action btn-sm" ng-click="vm.$state.go('prototypeadd', {prototype: vm.libraryName+'.'+vm.prototypeName})">
+                <span class="glyphicon glyphicon-paste"></span> NEW
+            </button>
+            <button tooltip-popup-delay="500" tooltip="new node from this prototype" type="button" class="config-action btn btn-config-action btn-sm" ng-click="vm.$state.go('configadd', {prototype: vm.libraryName+'.'+vm.prototypeName})">
+                <span class="glyphicon glyphicon-duplicate"></span> CLONE
+            </button>
+        </h3>
+    </div>
+</div>
+<div class="row" ng-if="vm.prototype.node_type||vm.prototype.development_status">
+    <div class="col-sm-12 col-md-12">
+        <h4 class="prototype-detail-top-label" ng-if="vm.prototype.node_type == 'miner'"><span class="label nodes-label-miner">{{ vm.prototype.node_type|uppercase }}</span></h4>
+        <h4 class="prototype-detail-top-label" ng-if="vm.prototype.node_type == 'output'"><span class="label nodes-label-output">{{ vm.prototype.node_type|uppercase }}</span></h4>
+        <h4 class="prototype-detail-top-label" ng-if="vm.prototype.node_type == 'processor'"><span class="label nodes-label-processor">{{ vm.prototype.node_type|uppercase }}</span></h4>
+        <h4 ng-if="vm.prototype.development_status == 'STABLE'" class="prototype-detail-top-label"><span class="label label-success">{{ vm.prototype.development_status }}</span></h4>
+        <h4 ng-if="vm.prototype.development_status != 'STABLE'" class="prototype-detail-top-label"><span class="label label-danger">{{ vm.prototype.development_status }}</span></h4>
+    </div>
+</div>
+<div class="row" ng-if="vm.library.description||vm.library.url">
+    <div class="col-sm-12 col-md-12 prototypedetail-section">
+        <h4>
+            ABOUT {{ vm.libraryName }}
+        </h4>
+        <div>
+            {{ vm.library.description }}
+        </div>
+        <div ng-if="vm.library.url">
+            For more details: <a target="_blank" href="{{ vm.library.url }}">{{ vm.library.url }}</a>
+        </div>
+    </div>
+</div>
+<div class="row" ng-if="vm.prototype.description">
+    <div class="col-sm-12 col-md-12 prototypedetail-section">
+        <h4>
+            ABOUT {{ vm.libraryName }}.{{ vm.prototypeName }}
+        </h4>
+        <div>
+            {{ vm.prototype.description }}
+        </div>
+    </div>
+</div>
+<div class="row" ng-if="vm.prototype.author">
+    <div class="col-sm-12 col-md-12 prototypedetail-section">
+        <h4>
+            AUTHOR
+        </h4>
+        <div>
+            {{ vm.prototype.author }}
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-sm-12 col-md-12 prototypedetail-section">
+        <h4>CLASS</h4>
+        <div>{{ vm.prototype.class }}</div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-sm-12 col-md-12 prototypedetail-section">
+        <h4>INDICATOR TYPES</h4>
+        <div>
+            <span ng-if="!vm.prototype.indicator_types"><i>None</i></span>
+            <span ng-if="vm.prototype.indicator_types || vm.prototype.indicator_types.length == 0" ng-repeat="itype in vm.prototype.indicator_types" class="label label-indicator-type m-r-xs">{{ itype }}</span>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-sm-12 col-md-12 prototypedetail-section">
+        <h4>TAGS</h4>
+        <div>
+            <span ng-if="vm.prototype.tags" ng-repeat="tag in vm.prototype.tags" class="label tag-prototype m-r-xs">{{ tag }}</span>
+            <span ng-if="!vm.prototype.tags || vm.prototype.tags.length == 0"><i>None</i></span>
+        </div>
+    </div>
+</div>
+<div class="row" ng-if="vm.prototype.config">
+    <div class="col-sm-12 col-md-12 prototypedetail-section">
+        <h4 class="m-b-xs">CONFIG</h4>
+        <node-config class="prototypedetail-config" config="vm.prototype.config"></node-config>
+    </div>
+</div>
