@@ -4,14 +4,18 @@ services:
   redis:
     image: redis
   engine:
-    image: minemeld:test
+    build:
+      context: ./core
+      dockerfile: ./docker/Dockerfile
     depends_on:
       - redis
     environment:
       - REDIS_URL=redis://redis:6379
     tty: true
   webui:
-    image: minemeld-webui:test
+    build:
+      context: ./webui
+      dockerfile: ./docker/Dockerfile
     depends_on:
       - redis
       - engine
