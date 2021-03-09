@@ -1,0 +1,27 @@
+author: abodart
+url: https://www.binarydefense.com/
+description: >
+    Binary Defense Systems Artillery Threat Intelligence Feed and Banlist Feed
+
+prototypes:
+    banlist:
+        author: Axel Bodart (ulg.ac.be)
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: The full banlist
+        config:
+            source_name: binarydefense.banlist
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 50
+                share_level: green
+            ignore_regex: '^#.*'
+            url: https://www.binarydefense.com/banlist.txt
+        class: minemeld.ft.http.HttpFT

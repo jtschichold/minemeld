@@ -1,0 +1,481 @@
+# Generated from BoolExpr.g4 by ANTLR 4.8
+# encoding: utf-8
+from antlr4 import *
+from io import StringIO
+import sys
+if sys.version_info[1] > 5:
+	from typing import TextIO
+else:
+	from typing.io import TextIO
+
+
+# flake8: noqa
+
+
+def serializedATN():
+    with StringIO() as buf:
+        buf.write("\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\22")
+        buf.write("\63\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4")
+        buf.write("\b\t\b\3\2\3\2\3\2\3\2\3\3\3\3\5\3\27\n\3\3\4\3\4\3\4")
+        buf.write("\5\4\34\n\4\3\5\3\5\3\5\3\6\3\6\3\6\3\6\3\6\5\6&\n\6\7")
+        buf.write("\6(\n\6\f\6\16\6+\13\6\3\6\3\6\3\7\3\7\3\b\3\b\3\b\2\2")
+        buf.write("\t\2\4\6\b\n\f\16\2\4\3\2\6\13\4\2\f\16\20\21\2/\2\20")
+        buf.write("\3\2\2\2\4\26\3\2\2\2\6\30\3\2\2\2\b\35\3\2\2\2\n \3\2")
+        buf.write("\2\2\f.\3\2\2\2\16\60\3\2\2\2\20\21\5\4\3\2\21\22\5\f")
+        buf.write("\7\2\22\23\5\16\b\2\23\3\3\2\2\2\24\27\7\17\2\2\25\27")
+        buf.write("\5\6\4\2\26\24\3\2\2\2\26\25\3\2\2\2\27\5\3\2\2\2\30\33")
+        buf.write("\7\17\2\2\31\34\5\b\5\2\32\34\5\n\6\2\33\31\3\2\2\2\33")
+        buf.write("\32\3\2\2\2\34\7\3\2\2\2\35\36\7\3\2\2\36\37\7\4\2\2\37")
+        buf.write("\t\3\2\2\2 !\7\3\2\2!)\5\4\3\2\"%\7\5\2\2#&\5\4\3\2$&")
+        buf.write("\5\16\b\2%#\3\2\2\2%$\3\2\2\2&(\3\2\2\2\'\"\3\2\2\2(+")
+        buf.write("\3\2\2\2)\'\3\2\2\2)*\3\2\2\2*,\3\2\2\2+)\3\2\2\2,-\7")
+        buf.write("\4\2\2-\13\3\2\2\2./\t\2\2\2/\r\3\2\2\2\60\61\t\3\2\2")
+        buf.write("\61\17\3\2\2\2\6\26\33%)")
+        return buf.getvalue()
+
+
+class BoolExprParser ( Parser ):
+
+    grammarFileName = "BoolExpr.g4"
+
+    atn = ATNDeserializer().deserialize(serializedATN())
+
+    decisionsToDFA = [ DFA(ds, i) for i, ds in enumerate(atn.decisionToState) ]
+
+    sharedContextCache = PredictionContextCache()
+
+    literalNames = [ "<INVALID>", "'('", "')'", "','", "'<'", "'<='", "'=='", 
+                     "'>='", "'>'", "'!='", "'true'", "'false'", "'null'" ]
+
+    symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
+                      "<INVALID>", "JAVASCRIPTIDENTIFIER", "STRING", "NUMBER", 
+                      "WS" ]
+
+    RULE_booleanExpression = 0
+    RULE_expression = 1
+    RULE_functionExpression = 2
+    RULE_noArgs = 3
+    RULE_oneOrMoreArgs = 4
+    RULE_comparator = 5
+    RULE_value = 6
+
+    ruleNames =  [ "booleanExpression", "expression", "functionExpression", 
+                   "noArgs", "oneOrMoreArgs", "comparator", "value" ]
+
+    EOF = Token.EOF
+    T__0=1
+    T__1=2
+    T__2=3
+    T__3=4
+    T__4=5
+    T__5=6
+    T__6=7
+    T__7=8
+    T__8=9
+    T__9=10
+    T__10=11
+    T__11=12
+    JAVASCRIPTIDENTIFIER=13
+    STRING=14
+    NUMBER=15
+    WS=16
+
+    def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
+        super().__init__(input, output)
+        self.checkVersion("4.8")
+        self._interp = ParserATNSimulator(self, self.atn, self.decisionsToDFA, self.sharedContextCache)
+        self._predicates = None
+
+
+
+
+    class BooleanExpressionContext(ParserRuleContext):
+
+        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+            super().__init__(parent, invokingState)
+            self.parser = parser
+
+        def expression(self):
+            return self.getTypedRuleContext(BoolExprParser.ExpressionContext,0)
+
+
+        def comparator(self):
+            return self.getTypedRuleContext(BoolExprParser.ComparatorContext,0)
+
+
+        def value(self):
+            return self.getTypedRuleContext(BoolExprParser.ValueContext,0)
+
+
+        def getRuleIndex(self):
+            return BoolExprParser.RULE_booleanExpression
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterBooleanExpression" ):
+                listener.enterBooleanExpression(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitBooleanExpression" ):
+                listener.exitBooleanExpression(self)
+
+
+
+
+    def booleanExpression(self):
+
+        localctx = BoolExprParser.BooleanExpressionContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 0, self.RULE_booleanExpression)
+        try:
+            self.enterOuterAlt(localctx, 1)
+            self.state = 14
+            self.expression()
+            self.state = 15
+            self.comparator()
+            self.state = 16
+            self.value()
+        except RecognitionException as re:
+            localctx.exception = re
+            self._errHandler.reportError(self, re)
+            self._errHandler.recover(self, re)
+        finally:
+            self.exitRule()
+        return localctx
+
+
+    class ExpressionContext(ParserRuleContext):
+
+        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+            super().__init__(parent, invokingState)
+            self.parser = parser
+
+        def JAVASCRIPTIDENTIFIER(self):
+            return self.getToken(BoolExprParser.JAVASCRIPTIDENTIFIER, 0)
+
+        def functionExpression(self):
+            return self.getTypedRuleContext(BoolExprParser.FunctionExpressionContext,0)
+
+
+        def getRuleIndex(self):
+            return BoolExprParser.RULE_expression
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterExpression" ):
+                listener.enterExpression(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitExpression" ):
+                listener.exitExpression(self)
+
+
+
+
+    def expression(self):
+
+        localctx = BoolExprParser.ExpressionContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 2, self.RULE_expression)
+        try:
+            self.state = 20
+            self._errHandler.sync(self)
+            la_ = self._interp.adaptivePredict(self._input,0,self._ctx)
+            if la_ == 1:
+                self.enterOuterAlt(localctx, 1)
+                self.state = 18
+                self.match(BoolExprParser.JAVASCRIPTIDENTIFIER)
+                pass
+
+            elif la_ == 2:
+                self.enterOuterAlt(localctx, 2)
+                self.state = 19
+                self.functionExpression()
+                pass
+
+
+        except RecognitionException as re:
+            localctx.exception = re
+            self._errHandler.reportError(self, re)
+            self._errHandler.recover(self, re)
+        finally:
+            self.exitRule()
+        return localctx
+
+
+    class FunctionExpressionContext(ParserRuleContext):
+
+        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+            super().__init__(parent, invokingState)
+            self.parser = parser
+
+        def JAVASCRIPTIDENTIFIER(self):
+            return self.getToken(BoolExprParser.JAVASCRIPTIDENTIFIER, 0)
+
+        def noArgs(self):
+            return self.getTypedRuleContext(BoolExprParser.NoArgsContext,0)
+
+
+        def oneOrMoreArgs(self):
+            return self.getTypedRuleContext(BoolExprParser.OneOrMoreArgsContext,0)
+
+
+        def getRuleIndex(self):
+            return BoolExprParser.RULE_functionExpression
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterFunctionExpression" ):
+                listener.enterFunctionExpression(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitFunctionExpression" ):
+                listener.exitFunctionExpression(self)
+
+
+
+
+    def functionExpression(self):
+
+        localctx = BoolExprParser.FunctionExpressionContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 4, self.RULE_functionExpression)
+        try:
+            self.enterOuterAlt(localctx, 1)
+            self.state = 22
+            self.match(BoolExprParser.JAVASCRIPTIDENTIFIER)
+            self.state = 25
+            self._errHandler.sync(self)
+            la_ = self._interp.adaptivePredict(self._input,1,self._ctx)
+            if la_ == 1:
+                self.state = 23
+                self.noArgs()
+                pass
+
+            elif la_ == 2:
+                self.state = 24
+                self.oneOrMoreArgs()
+                pass
+
+
+        except RecognitionException as re:
+            localctx.exception = re
+            self._errHandler.reportError(self, re)
+            self._errHandler.recover(self, re)
+        finally:
+            self.exitRule()
+        return localctx
+
+
+    class NoArgsContext(ParserRuleContext):
+
+        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+            super().__init__(parent, invokingState)
+            self.parser = parser
+
+
+        def getRuleIndex(self):
+            return BoolExprParser.RULE_noArgs
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterNoArgs" ):
+                listener.enterNoArgs(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitNoArgs" ):
+                listener.exitNoArgs(self)
+
+
+
+
+    def noArgs(self):
+
+        localctx = BoolExprParser.NoArgsContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 6, self.RULE_noArgs)
+        try:
+            self.enterOuterAlt(localctx, 1)
+            self.state = 27
+            self.match(BoolExprParser.T__0)
+            self.state = 28
+            self.match(BoolExprParser.T__1)
+        except RecognitionException as re:
+            localctx.exception = re
+            self._errHandler.reportError(self, re)
+            self._errHandler.recover(self, re)
+        finally:
+            self.exitRule()
+        return localctx
+
+
+    class OneOrMoreArgsContext(ParserRuleContext):
+
+        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+            super().__init__(parent, invokingState)
+            self.parser = parser
+
+        def expression(self, i:int=None):
+            if i is None:
+                return self.getTypedRuleContexts(BoolExprParser.ExpressionContext)
+            else:
+                return self.getTypedRuleContext(BoolExprParser.ExpressionContext,i)
+
+
+        def value(self, i:int=None):
+            if i is None:
+                return self.getTypedRuleContexts(BoolExprParser.ValueContext)
+            else:
+                return self.getTypedRuleContext(BoolExprParser.ValueContext,i)
+
+
+        def getRuleIndex(self):
+            return BoolExprParser.RULE_oneOrMoreArgs
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterOneOrMoreArgs" ):
+                listener.enterOneOrMoreArgs(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitOneOrMoreArgs" ):
+                listener.exitOneOrMoreArgs(self)
+
+
+
+
+    def oneOrMoreArgs(self):
+
+        localctx = BoolExprParser.OneOrMoreArgsContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 8, self.RULE_oneOrMoreArgs)
+        self._la = 0 # Token type
+        try:
+            self.enterOuterAlt(localctx, 1)
+            self.state = 30
+            self.match(BoolExprParser.T__0)
+            self.state = 31
+            self.expression()
+            self.state = 39
+            self._errHandler.sync(self)
+            _la = self._input.LA(1)
+            while _la==BoolExprParser.T__2:
+                self.state = 32
+                self.match(BoolExprParser.T__2)
+                self.state = 35
+                self._errHandler.sync(self)
+                token = self._input.LA(1)
+                if token in [BoolExprParser.JAVASCRIPTIDENTIFIER]:
+                    self.state = 33
+                    self.expression()
+                    pass
+                elif token in [BoolExprParser.T__9, BoolExprParser.T__10, BoolExprParser.T__11, BoolExprParser.STRING, BoolExprParser.NUMBER]:
+                    self.state = 34
+                    self.value()
+                    pass
+                else:
+                    raise NoViableAltException(self)
+
+                self.state = 41
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+
+            self.state = 42
+            self.match(BoolExprParser.T__1)
+        except RecognitionException as re:
+            localctx.exception = re
+            self._errHandler.reportError(self, re)
+            self._errHandler.recover(self, re)
+        finally:
+            self.exitRule()
+        return localctx
+
+
+    class ComparatorContext(ParserRuleContext):
+
+        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+            super().__init__(parent, invokingState)
+            self.parser = parser
+
+
+        def getRuleIndex(self):
+            return BoolExprParser.RULE_comparator
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterComparator" ):
+                listener.enterComparator(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitComparator" ):
+                listener.exitComparator(self)
+
+
+
+
+    def comparator(self):
+
+        localctx = BoolExprParser.ComparatorContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 10, self.RULE_comparator)
+        self._la = 0 # Token type
+        try:
+            self.enterOuterAlt(localctx, 1)
+            self.state = 44
+            _la = self._input.LA(1)
+            if not((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << BoolExprParser.T__3) | (1 << BoolExprParser.T__4) | (1 << BoolExprParser.T__5) | (1 << BoolExprParser.T__6) | (1 << BoolExprParser.T__7) | (1 << BoolExprParser.T__8))) != 0)):
+                self._errHandler.recoverInline(self)
+            else:
+                self._errHandler.reportMatch(self)
+                self.consume()
+        except RecognitionException as re:
+            localctx.exception = re
+            self._errHandler.reportError(self, re)
+            self._errHandler.recover(self, re)
+        finally:
+            self.exitRule()
+        return localctx
+
+
+    class ValueContext(ParserRuleContext):
+
+        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+            super().__init__(parent, invokingState)
+            self.parser = parser
+
+        def STRING(self):
+            return self.getToken(BoolExprParser.STRING, 0)
+
+        def NUMBER(self):
+            return self.getToken(BoolExprParser.NUMBER, 0)
+
+        def getRuleIndex(self):
+            return BoolExprParser.RULE_value
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterValue" ):
+                listener.enterValue(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitValue" ):
+                listener.exitValue(self)
+
+
+
+
+    def value(self):
+
+        localctx = BoolExprParser.ValueContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 12, self.RULE_value)
+        self._la = 0 # Token type
+        try:
+            self.enterOuterAlt(localctx, 1)
+            self.state = 46
+            _la = self._input.LA(1)
+            if not((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << BoolExprParser.T__9) | (1 << BoolExprParser.T__10) | (1 << BoolExprParser.T__11) | (1 << BoolExprParser.STRING) | (1 << BoolExprParser.NUMBER))) != 0)):
+                self._errHandler.recoverInline(self)
+            else:
+                self._errHandler.reportMatch(self)
+                self.consume()
+        except RecognitionException as re:
+            localctx.exception = re
+            self._errHandler.reportError(self, re)
+            self._errHandler.recover(self, re)
+        finally:
+            self.exitRule()
+        return localctx
+
+
+
+
+

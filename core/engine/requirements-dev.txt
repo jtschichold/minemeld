@@ -1,0 +1,7 @@
+Sphinx
+sphinx-rtd-theme
+tox
+mock
+git+https://github.com/PaloAltoNetworks/platter#egg=platter
+cython
+virtualenv

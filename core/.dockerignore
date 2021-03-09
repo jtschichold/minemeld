@@ -1,0 +1,8 @@
+*
+!engine/minemeld
+!engine/nodes.json
+!engine/setup.py
+!engine/README.md
+!engine/requirements*.txt
+!prototypes/prototypes
+!docker

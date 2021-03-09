@@ -1,0 +1,30 @@
+url: http://virbl.org/
+description: >
+    Virbl is a project of which the idea was born during the RIPE-48 meeting.
+    The plan was to get reports of virusscanning mailservers, and put the
+    IP-addresses that were reported to send viruses on a blacklist.
+
+prototypes:
+    bl:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - ConfidenceHigh
+            - OSINT
+            - ShareLevelGreen
+            - Deprecated
+        class: minemeld.ft.http.HttpFT
+        description: virbl IP blocklist
+        config:
+            source_name: virbl.bl
+            attributes:
+                application: smtp
+                direction: inbound
+                type: IPv4
+                confidence: 80
+                share_level: green
+            ignore_regex: '^Export'
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt

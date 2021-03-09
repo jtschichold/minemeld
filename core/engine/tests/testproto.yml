@@ -1,0 +1,5 @@
+prototypes:
+    test:
+        config:
+            useless1: 1
+        class: minemeld.ft.http.HttpFT

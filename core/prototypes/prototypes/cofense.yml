@@ -1,0 +1,65 @@
+url: https://cofense.com
+description: >
+    Cofense is the leading provider of human-focused phishing defense solutions
+    for organizations concerned about their susceptibility to today’s top
+    attack vector — spear phishing. Cofense’s intelligence-driven platform
+    transforms your response team, security applications, and employees into
+    a synchronized layer of defense by enabling them to identify and prevent
+    spear phishing threats.
+
+prototypes:
+    Intelligence:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+            - domain
+            - URL
+        tags:
+            - ShareLevelRed
+            - ConfidenceLow
+            - ConfidenceMedium
+            - ConfidenceHigh
+        description: >
+            Cofense Intelligence provides accurate and timely alerts so that
+            you can be ready to take fast action when under attack. Cofense
+            Analysts and Researchers work to analyze and verify phishing
+            threats delivering ransomware, key loggers, RATs, and other types
+            of crimeware. This high-fidelity data is delivered in multiple
+            forms to effectively prepare and respond to attacks.
+            You need a valid Cofense API key to access this feed.
+        class: minemeld.ft.phishme.Intelligence
+        config:
+            age_out:
+                default: last_seen+30d
+                sudden_death: false
+            attributes:
+                confidence: 10
+                share_level: red
+            initial_interval: 30d
+    Triage:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - any
+        tags:
+            - ShareLevelRed
+            - ConfidenceLow
+            - ConfidenceMedium
+            - ConfidenceHigh
+        description: >
+            Cofense TriageTM accelerates phishing qualification, investigation,
+            and response by cutting through the noise automatically and surfacing
+            the real threats faster, protecting your organization from the risk
+            of compromise.
+        class: minemeld.ft.cofense.Triage
+        config:
+            age_out:
+                default: last_seen+30d
+                sudden_death: false
+            attributes:
+                confidence: 10
+                share_level: red
+            initial_interval: 30d

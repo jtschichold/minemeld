@@ -1,0 +1,256 @@
+description: >
+    www.blocklist.de is a free and voluntary service provided by a
+    Fraud/Abuse-specialist, whose servers are often attacked on
+    SSH-, Mail-Login-, FTP-, Webserver- and other services.
+url: http://www.blocklist.de/en/index.html
+
+prototypes:
+    all:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IP addresses that have attacked one of our
+            customers/servers in the last 48 hours.
+        config:
+            source_name: blocklist_de.all
+            url: https://lists.blocklist.de/lists/all.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+        class: minemeld.ft.http.HttpFT
+    ssh:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IP addresses which have been reported within the last
+            48 hours as having run attacks on the service SSH
+        config:
+            source_name: blocklist_de.ssh
+            url: https://lists.blocklist.de/lists/ssh.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+                application: ssh
+        class: minemeld.ft.http.HttpFT
+    mail:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IP addresses which have been reported within the last
+            48 hours as having run attacks on the service Mail, Postfix.
+        config:
+            source_name: blocklist_de.mail
+            url: https://lists.blocklist.de/lists/mail.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+                application: smtp
+        class: minemeld.ft.http.HttpFT
+    apache:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IP addresses which have been reported within the last
+            48 hours as having run attacks on the service Apache,
+            Apache-DDOS, RFI-Attacks.
+        config:
+            source_name: blocklist_de.apache
+            url: https://lists.blocklist.de/lists/apache.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+        class: minemeld.ft.http.HttpFT
+    imap:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IP addresses which have been reported within the last
+            48 hours for attacks on the Service imap, sasl, pop3..... 
+        config:
+            source_name: blocklist_de.imap
+            url: https://lists.blocklist.de/lists/imap.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+                application: imap
+        class: minemeld.ft.http.HttpFT
+    ftp:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IP addresses which have been reported within the
+            last 48 hours for attacks on the Service FTP. 
+        config:
+            source_name: blocklist_de.ftp
+            url: https://lists.blocklist.de/lists/ftp.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+                application: ftp
+        class: minemeld.ft.http.HttpFT
+    sip:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IP addresses that tried to login in a SIP-, VOIP- or 
+            Asterisk-Server and are inclueded in the IPs-List from
+            http://www.infiltrated.net/ (Twitter).
+        config:
+            source_name: blocklist_de.sip
+            url: https://lists.blocklist.de/lists/sip.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+                application: sip
+        class: minemeld.ft.http.HttpFT
+    bots:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IP addresses which have been reported within the
+            last 48 hours as having run attacks attacks on the RFI-Attacks,
+            REG-Bots, IRC-Bots or BadBots (BadBots = he has posted a
+            Spam-Comment on a open Forum or Wiki).
+        config:
+            source_name: blocklist_de.bots
+            url: https://lists.blocklist.de/lists/bots.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+        class: minemeld.ft.http.HttpFT
+    strongips:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IPs which are older then 2 month and have more
+            then 5.000 attacks. 
+        config:
+            source_name: blocklist_de.strongips
+            url: https://lists.blocklist.de/lists/strongips.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+        class: minemeld.ft.http.HttpFT
+    ircbot:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: ''
+        config:
+            source_name: blocklist_de.ircbot
+            url: https://lists.blocklist.de/lists/ircbot.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+        class: minemeld.ft.http.HttpFT
+    bruteforcelogin:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceMedium
+            - ShareLevelGreen
+        description: >
+            All IPs which attacks Joomlas, Wordpress and other
+            Web-Logins with Brute-Force Logins. 
+        config:
+            source_name: blocklist_de.bruteforcelogin
+            url: https://lists.blocklist.de/lists/bruteforcelogin.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                share_level: green
+                confidence: 50
+        class: minemeld.ft.http.HttpFT

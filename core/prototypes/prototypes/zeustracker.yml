@@ -1,0 +1,65 @@
+url: https://zeustracker.abuse.ch/
+description: >
+    Zeus Tracker has ceased operations on Jul 8th 2019.
+    ZeuS Tracker tracks ZeuS Command&Control servers (hosts) around the world and
+    provides you a domain- and a IP-blocklist
+
+prototypes:
+    baddomains:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        description: >
+          DEPRECATED.
+          If you want to block domain names used by the ZeuS trojan, you
+          should use this list. The ZeuS domain blocklist is
+          the recommended blocklist if you want to block only ZeuS domain names.
+          It excludes domain names that ZeuS Tracker believes to be hijacked
+          (level 2). Hence the false positive rate should be much lower compared
+          to the standard ZeuS domain blocklist.
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        config:
+          source_name: zeustracker.baddomains
+          attributes:
+            type: domain
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 1800
+        class: minemeld.ft.http.HttpFT
+    badips:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        description: >
+          DEPRECATED.
+          This blocklists only includes IPv4 addresses that are used by the ZeuS
+          trojan. It is the recommened blocklist if you want to block only ZeuS IPs.
+          It excludes IP addresses that ZeuS Tracker believes to be hijacked
+          (level 2) or belong to a free web hosting provider (level 3). Hence the
+          false postive rate should be much lower compared to the standard ZeuS IP
+          blocklist (see below).
+        node_type: miner
+        indicator_types:
+          - IPv4
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+          - DirectionOutbound
+        config:
+          source_name: zeustracker.badips
+          attributes:
+            type: IPv4
+            direction: outbound
+            confidence: 100
+            share_level: green
+          ignore_regex: '#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 1800
+        class: minemeld.ft.http.HttpFT

@@ -1,0 +1,217 @@
+url: https://www.auscert.org.au/
+description: >
+    AusCERT is a leading Cyber Emergency Response Team (CERT)
+    in Australia and the Asia/Pacific region.
+
+prototypes:
+    7days_combo:
+        author: Simon Coggins
+        development_status: STABLE
+        node_type: miner
+        indicator_types: [ URL ]
+        tags:
+            - ConfidenceHigh
+            - ShareLevelRed
+        description: 7 days combo
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.7days_combo
+            url: https://www.auscert.org.au/api/v1/malurl/combo-7-xml
+            indicator:
+                regex: '<uri>(.*)</uri>'
+                transform: '\1'
+            attributes:
+                type: URL
+                share_level: red
+                confidence: 80
+        class: minemeld.ft.auscert.MaliciousURLFeed
+
+    7days_malware:
+        author: Simon Coggins
+        development_status: STABLE
+        node_type: miner
+        indicator_types: [ URL ]
+        tags:
+            - ConfidenceHigh
+            - ShareLevelRed
+        description: 7 days malware
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.7day_smalware
+            url: https://www.auscert.org.au/api/v1/malurl/malware-7-xml
+            indicator:
+                regex: '<uri>(.*)</uri>'
+                transform: '\1'
+            attributes:
+                type: URL
+                share_level: red
+                confidence: 80
+        class: minemeld.ft.auscert.MaliciousURLFeed
+
+    7days_phishing:
+        author: Simon Coggins
+        development_status: STABLE
+        node_type: miner
+        indicator_types: [ URL ]
+        tags:
+            - ConfidenceHigh
+            - ShareLevelRed
+        description: 7 days phishing
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.7days_phishing
+            url: https://www.auscert.org.au/api/v1/malurl/phishing-7-xml
+            indicator:
+                regex: '<uri>(.*)</uri>'
+                transform: '\1'
+            attributes:
+                type: URL
+                share_level: red
+                confidence: 80
+        class: minemeld.ft.auscert.MaliciousURLFeed
+
+    7days_dumpsites:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types: [ URL ]
+        tags:
+            - Deprecated
+            - ShareLevelRed
+        description: Do not use !
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.7days_dumpsites
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+
+    7days_muling:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types: [ URL ]
+        tags:
+            - Deprecated
+            - ShareLevelRed
+        description: Do not use !
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.7days_muling
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+
+    1day_combo:
+        author: Simon Coggins
+        development_status: STABLE
+        node_type: miner
+        indicator_types: [ URL ]
+        tags:
+            - ConfidenceHigh
+            - ShareLevelRed
+        description: 1 day combo
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.1day_combo
+            url: https://www.auscert.org.au/api/v1/malurl/combo-1-xml
+            indicator:
+                regex: '<uri>(.*)</uri>'
+                transform: '\1'
+            attributes:
+                type: URL
+                share_level: red
+                confidence: 80
+        class: minemeld.ft.auscert.MaliciousURLFeed
+
+    1day_malware:
+        author: Simon Coggins
+        development_status: STABLE
+        node_type: miner
+        indicator_types:  [ URL ]
+        tags:
+            - ConfidenceHigh
+            - ShareLevelRed
+        description: 1 day malware
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.1day_malware
+            url: https://www.auscert.org.au/api/v1/malurl/malware-1-xml
+            indicator:
+                regex: '<uri>(.*)</uri>'
+                transform: '\1'
+            attributes:
+                type: URL
+                share_level: red
+                confidence: 80
+        class: minemeld.ft.auscert.MaliciousURLFeed
+
+    1day_phishing:
+        author: Simon Coggins
+        development_status: STABLE
+        node_type: miner
+        indicator_types: [ URL ]
+        tags:
+            - ConfidenceHigh
+            - ShareLevelRed
+        description: 1 day phishing
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.1day_phishing
+            url: https://www.auscert.org.au/api/v1/malurl/phishing-1-xml
+            indicator:
+                regex: '<uri>(.*)</uri>'
+                transform: '\1'
+            attributes:
+                type: URL
+                share_level: red
+                confidence: 80
+        class: minemeld.ft.auscert.MaliciousURLFeed
+
+    1day_dumpsites:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types: [ URL ]
+        tags:
+            - Deprecated
+            - ShareLevelRed
+        description: Do not use !
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.1day_dumpsites
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+
+    1day_muling:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types: [ URL ]
+        tags:
+            - Deprecated
+            - ShareLevelRed
+        description: Do not use !
+        config:
+            age_out:
+                default: null
+                sudden_death: true
+            source_name: auscert.1day_muling
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT

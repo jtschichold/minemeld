@@ -1,0 +1,99 @@
+url: https://www.spamhaus.org/
+description: >
+    The Spamhaus Project is an international nonprofit organization whose
+    mission is to track the Internet's spam operations and sources, to
+    provide dependable realtime anti-spam protection for Internet networks,
+    to work with Law Enforcement Agencies to identify and pursue spam and
+    malware gangs worldwide, and to lobby governments for effective
+    anti-spam legislation.
+
+prototypes:
+    DROP:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceHigh
+            - ShareLevelGreen
+        description: Spamhaus Don't Route Or Peer List (DROP)
+        config:
+            source_name: spamhaus.DROP
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 100
+                share_level: green
+            ignore_regex: '^;.*'
+            indicator:
+                regex: '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}'
+            url: https://www.spamhaus.org/drop/drop.txt
+            age_out:
+                default: null
+                sudden_death: true
+                interval: 677
+        class: minemeld.ft.http.HttpFT
+
+    EDROP:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ConfidenceHigh
+            - ShareLevelGreen
+        description: Spamhaus Extended DROP List (EDROP)
+        config:
+            source_name: spamhaus.EDROP
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 100
+                share_level: green
+            ignore_regex: '^;.*'
+            indicator:
+                regex: '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}'
+            url: https://www.spamhaus.org/drop/edrop.txt
+            age_out:
+                default: null
+                sudden_death: true
+                interval: 677
+        class: minemeld.ft.http.HttpFT
+
+    ASNDROP:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types:
+            - autonomous-system
+        tags:
+            - OSINT
+            - ConfidenceHigh
+            - ShareLevelGreen
+        description: Spamhaus ASN-DROP
+        config:
+            source_name: spamhaus.ASNDROP
+            attributes:
+                type: autonomous-system
+                confidence: 100
+                share_level: green
+            ignore_regex: '^;.*'
+            indicator:
+                regex: '^AS[0-9]+'
+            fields:
+                asndrop_country:
+                    regex: '^.*;\W([a-zA-Z]+)\W+'
+                    transform: '\1'
+                asndrop_org:
+                    regex: '^.*\|\W+(.*)'
+                    transform: '\1'
+            url: https://www.spamhaus.org/drop/asndrop.txt
+            age_out:
+                default: null
+                sudden_death: true
+                interval: 86400
+        class: minemeld.ft.http.HttpFT

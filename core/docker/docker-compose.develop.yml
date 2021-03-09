@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis
+  engine:
+    image: minemeld:develop
+    volumes:
+      - ./:/opt/minemeld/engine/core
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379
+    tty: true
+  webui:
+    image: minemeld-webui:test
+    depends_on:
+      - redis
+      - engine
+    environment:
+      - NGINX_REDIRECT_PORT=8443
+      - MINEMELD_ENGINE_HOST=engine
+      - MINEMELD_ENGINE_PORT=5000
+    ports:
+      - "8443:443"
+      - "8080:80"

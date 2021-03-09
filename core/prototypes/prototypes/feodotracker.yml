@@ -1,0 +1,139 @@
+url: https://feodotracker.abuse.ch/
+description: >
+    Feodo Tracker offers various types of blocklists that allows you to block
+    Feodo botnet C&C traffic.
+
+prototypes:
+    domainblocklist:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        description: >
+          This feed was dismissed by the provider
+        node_type: miner
+        indicator_types:
+            - domain
+        tags:
+            - ConfidenceHigh
+            - ShareLevelGreen
+            - OSINT
+        config:
+          source_name: feodotracker.domainblocklist
+          attributes:
+            type: domain
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 1800
+        class: minemeld.ft.http.HttpFT
+    baddomains:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        description: >
+          Do not use, use feodotracker.domainblocklist instead. Will be removed in
+          a future release.
+        node_type: miner
+        indicator_types:
+            - domain
+        tags:
+            - ConfidenceHigh
+            - ShareLevelGreen
+            - OSINT
+        config:
+          source_name: feodotracker.baddomains
+          attributes:
+            type: domain
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 1800
+        class: minemeld.ft.http.HttpFT
+    badips:
+        author: MineMeld Core Team
+        development_status: STABLE
+        description: >
+          From the website:
+          Dridex and Emotet/Heodo botnet command&control servers (C&Cs) reside on
+          a compromised server or a server that has been rent and setup by the 
+          botnet herder itself for the sole purpose of botnet hosting. Feodo Tracker 
+          offers a blocklist of IP addresses that are associated with such botnet 
+          C&Cs which can be used to detect and block botnet C2 traffic from infected 
+          machines towards the internet, leaving your network. An IP address will 
+          only get added to the blocklist if it responds with a valid botnet C2 
+          response. However, a botnet C2 may become offline later. The Botnet C2 
+          IP Blocklist is available in different formats documented below.
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - ConfidenceHigh
+            - ShareLevelGreen
+            - OSINT
+        config:
+          source_name: feodotracker.badips
+          attributes:
+            type: IPv4
+            direction: outbound
+            confidence: 100
+            share_level: green
+          ignore_regex: '#'
+          url: https://feodotracker.abuse.ch/downloads/ipblocklist.txt
+          interval: 600
+        class: minemeld.ft.http.HttpFT
+    ipblocklist:
+        author: MineMeld Core Team
+        development_status: STABLE
+        description: >
+          From the website:
+          Dridex and Emotet/Heodo botnet command&control servers (C&Cs) reside on
+          a compromised server or a server that has been rent and setup by the 
+          botnet herder itself for the sole purpose of botnet hosting. Feodo Tracker 
+          offers a blocklist of IP addresses that are associated with such botnet 
+          C&Cs which can be used to detect and block botnet C2 traffic from infected 
+          machines towards the internet, leaving your network. An IP address will 
+          only get added to the blocklist if it responds with a valid botnet C2 
+          response. However, a botnet C2 may become offline later. The Botnet C2 
+          IP Blocklist is available in different formats documented below.
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - ConfidenceMedium
+            - ShareLevelGreen
+            - OSINT
+        config:
+          source_name: feodotracker.ipblocklist
+          attributes:
+            type: IPv4
+            direction: outbound
+            confidence: 30
+            share_level: green
+          ignore_regex: '#'
+          url: https://feodotracker.abuse.ch/downloads/ipblocklist_aggressive.txt
+          interval: 600
+        class: minemeld.ft.http.HttpFT
+    hashes:
+        author: MineMeld Core Team
+        development_status: STABLE
+        description: >
+          From the website:
+          Feodo Tracker publishes a list of hashes (MD5) associated with Dridex and 
+          Emotet/Heodo malware samples.
+        node_type: miner
+        indicator_types:
+            - md5
+        tags:
+            - ConfidenceMedium
+            - ShareLevelGreen
+            - OSINT
+        config:
+          source_name: feodotracker.hashes
+          attributes:
+            type: md5
+            confidence: 100
+            share_level: green
+          ignore_regex: '#'
+          url: https://feodotracker.abuse.ch/downloads/malware_hashes.txt
+          interval: 600
+        class: minemeld.ft.http.HttpFT

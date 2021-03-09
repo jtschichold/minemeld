@@ -1,0 +1,524 @@
+url: https://ransomwaretracker.abuse.ch/
+description: >
+    Ransomware Tracker as Dec 8th 2019 has been DEPRECATED.
+    Ransomware Tracker tracks and monitors the status of domain names,
+    IP addresses and URLs that are associated with Ransomware, such as
+    Botnet C&C servers, distribution sites and payment sites.
+
+prototypes:
+    CW_C2_URLBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - URL
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. CryptoWall C2 URLs
+        config:
+          source_name: ransomwaretracker.CW_C2_URLBL
+          attributes:
+            type: URL
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    CW_C2_DOMBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceLow
+          - ShareLevelGreen
+        description: DEPRECATED. CryptoWall C2 domains
+        config:
+          source_name: ransomwaretracker.CW_C2_DOMBL
+          attributes:
+            type: domain
+            confidence: 40
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    CW_PS_DOMBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. CryptoWall C2 Payment Sites domains
+        config:
+          source_name: ransomwaretracker.CW_PS_DOMBL
+          attributes:
+            type: domain
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    CW_PS_IPBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - IPv4
+        tags:
+          - OSINT
+          - ConfidenceMedium
+          - ShareLevelGreen
+          - DirectionOutbound
+        description: DEPRECATED. CryptoWall Payment Sites IPs
+        config:
+          source_name: ransomwaretracker.CW_PS_IPBL
+          attributes:
+            type: IPv4
+            confidence: 70
+            share_level: green
+            direction: outbound
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    TC_C2_URLBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - URL
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. TeslaCrypt C2 URLs
+        config:
+          source_name: ransomwaretracker.TC_C2_URLBL
+          attributes:
+            type: URL
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    TC_C2_DOMBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceLow
+          - ShareLevelGreen
+        description: DEPRECATED. TeslaCrypt C2 domains
+        config:
+          source_name: ransomwaretracker.TC_C2_DOMBL
+          attributes:
+            type: domain
+            confidence: 40
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    TC_PS_DOMBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceLow
+          - ShareLevelGreen
+        description: DEPRECATED. TeslaCrypt Payment Sites domains
+        config:
+          source_name: ransomwaretracker.TC_PS_DOMBL
+          attributes:
+            type: domain
+            confidence: 40
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    TC_PS_IPBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - IPv4
+        tags:
+          - OSINT
+          - ConfidenceMedium
+          - ShareLevelGreen
+          - DirectionOutbound
+        description: DEPRECATED. TeslaCrypt Payment Sites IPs
+        config:
+          source_name: ransomwaretracker.TC_PS_IPBL
+          attributes:
+            type: IPv4
+            confidence: 70
+            share_level: green
+            direction: outbound
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    TC_DS_URLBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - URL
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. TeslaCrypt Distribution Sites URLs
+        config:
+          source_name: ransomwaretracker.TC_DS_URLBL
+          attributes:
+            type: URL
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    LY_C2_DOMBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. Locky C2 domains
+        config:
+          source_name: ransomwaretracker.LY_C2_DOMBL
+          attributes:
+            type: domain
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    LY_C2_IPBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - IPv4
+        tags:
+          - OSINT
+          - ConfidenceMedium
+          - ShareLevelGreen
+          - DirectionOutbound
+        description: DEPRECATED. Locky IPs
+        config:
+          source_name: ransomwaretracker.LY_C2_IPBL
+          attributes:
+            type: IPv4
+            confidence: 70
+            share_level: green
+            direction: outbound
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    LY_PS_DOMBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. Locky Payment Sites domains
+        config:
+          source_name: ransomwaretracker.LY_PS_DOMBL
+          attributes:
+            type: domain
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    LY_PS_IPBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - IPv4
+        tags:
+          - OSINT
+          - ConfidenceLow
+          - ShareLevelGreen
+        description: DEPRECATED. Locky Payment Sites IPs
+        config:
+          source_name: ransomwaretracker.LY_PS_IPBL
+          attributes:
+            type: IPv4
+            confidence: 40
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    LY_DS_URLBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - URL
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. Locky Distribution Sites URLs
+        config:
+          source_name: ransomwaretracker.LY_DS_URLBL
+          attributes:
+            type: URL
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    TL_C2_DOMBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. TorrentLocker C2 domains
+        config:
+          source_name: ransomwaretracker.TL_C2_DOMBL
+          attributes:
+            type: domain
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    TL_C2_IPBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - IPv4
+        tags:
+          - OSINT
+          - ConfidenceMedium
+          - ShareLevelGreen
+          - DirectionOutbound
+        description: DEPRECATED. TorrentLocker C2 IPs
+        config:
+          source_name: ransomwaretracker.TL_C2_IPBL
+          attributes:
+            type: IPv4
+            confidence: 70
+            share_level: green
+            direction: outbound
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    TL_PS_DOMBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. TorrentLocker Payment Sites domains
+        config:
+          source_name: ransomwaretracker.TL_PS_DOMBL
+          attributes:
+            type: domain
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    TL_PS_IPBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - IPv4
+        tags:
+          - OSINT
+          - ConfidenceMedium
+          - ShareLevelGreen
+          - DirectionOutbound
+        description: DEPRECATED. TorrentLocker Payment Sites IPs
+        config:
+          source_name: ransomwaretracker.TL_PS_IPBL
+          attributes:
+            type: IPv4
+            confidence: 70
+            share_level: green
+            direction: outbound
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    RW_DOMBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - domain
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. Combined Ransomware domains
+        config:
+          source_name: ransomwaretracker.RW_DOMBL
+          attributes:
+            type: domain
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    RW_URLBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - URL
+        tags:
+          - OSINT
+          - ConfidenceHigh
+          - ShareLevelGreen
+        description: DEPRECATED. Combined Ransomware URLs
+        config:
+          source_name: ransomwaretracker.RW_URLBL
+          attributes:
+            type: URL
+            confidence: 100
+            share_level: green
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT
+    RW_IPBL:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+          - IPv4
+        tags:
+          - OSINT
+          - ConfidenceMedium
+          - ShareLevelGreen
+          - DirectionOutbound
+        description: DEPRECATED. Combined Ransomware IPs
+        config:
+          source_name: ransomwaretracker.RW_IPBL
+          attributes:
+            type: IPv4
+            confidence: 70
+            share_level: green
+            direction: outbound
+          ignore_regex: '^#'
+          url: https://minemeld-updates.panw.io/deprecated-feed.txt
+          interval: 300
+          age_out:
+            default: null
+            sudden_death: true
+        class: minemeld.ft.http.HttpFT

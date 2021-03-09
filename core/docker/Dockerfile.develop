@@ -1,0 +1,8 @@
+FROM python:3.8-slim AS develop-image
+RUN apt update && apt install -y --no-install-recommends gcc build-essential git gosu libleveldb1d libsnappy1v5 libffi-dev libssl-dev libleveldb-dev libxslt1-dev libc-ares-dev libsnappy-dev 
+COPY . /tmp
+RUN /tmp/docker/setup-develop.sh
+VOLUME /opt/minemeld/engine/core /opt/minemeld/prototypes/current /opt/minemeld/local/config
+EXPOSE 5000
+ENTRYPOINT ["/opt/minemeld/docker-entrypoint.develop.sh"]
+CMD ["minemeld"]

@@ -1,0 +1,174 @@
+url: http://docs.aws.amazon.com/general/latest/gr/aws-ip-ranges.html
+description: >
+    Amazon Web Services (AWS) publishes its current IP address ranges
+    in JSON format
+
+prototypes:
+    AMAZON:
+        author: MineMeld Core Team
+        development_status: STABLE
+        description: all AMAZON ranges
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - ConfidenceHigh
+            - ShareLevelGreen
+        class: minemeld.ft.json.SimpleJSON
+        config:
+            source_name: aws.AMAZON
+            url: https://ip-ranges.amazonaws.com/ip-ranges.json
+            extractor: "prefixes[?service=='AMAZON']"
+            prefix: aws
+            indicator: ip_prefix
+            fields:
+                - region
+                - service
+            age_out:
+                default: null
+                sudden_death: true
+                interval: 257
+            attributes:
+                type: IPv4
+                confidence: 100
+                share_level: green
+    EC2:
+        author: MineMeld Core Team
+        development_status: STABLE
+        description: EC2 ranges
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - ConfidenceHigh
+            - ShareLevelGreen
+        class: minemeld.ft.json.SimpleJSON
+        config:
+            source_name: aws.EC2
+            url: https://ip-ranges.amazonaws.com/ip-ranges.json
+            extractor: "prefixes[?service=='EC2']"
+            prefix: aws
+            indicator: ip_prefix
+            fields:
+                - region
+                - service
+            age_out:
+                default: null
+                sudden_death: true
+                interval: 257
+            attributes:
+                type: IPv4
+                confidence: 100
+                share_level: green
+    ROUTE53:
+        author: MineMeld Core Team
+        development_status: STABLE
+        description: ROUTE53 ranges
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - ConfidenceHigh
+            - ShareLevelGreen
+        class: minemeld.ft.json.SimpleJSON
+        config:
+            source_name: aws.ROUTE53
+            url: https://ip-ranges.amazonaws.com/ip-ranges.json
+            extractor: "prefixes[?service=='ROUTE53']"
+            prefix: aws
+            indicator: ip_prefix
+            fields:
+                - region
+                - service
+            age_out:
+                default: null
+                sudden_death: true
+                interval: 257
+            attributes:
+                type: IPv4
+                confidence: 100
+                share_level: green
+    ROUTE53_HEALTHCHECKS:
+        author: MineMeld Core Team
+        development_status: STABLE
+        description: ROUTE53_HEALTHCHECKS ranges
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - ConfidenceHigh
+            - ShareLevelGreen
+        class: minemeld.ft.json.SimpleJSON
+        config:
+            source_name: aws.ROUTE53_HEALTHCHECKS
+            url: https://ip-ranges.amazonaws.com/ip-ranges.json
+            extractor: "prefixes[?service=='ROUTE53_HEALTHCHECKS']"
+            prefix: aws
+            indicator: ip_prefix
+            fields:
+                - region
+                - service
+            age_out:
+                default: null
+                sudden_death: true
+                interval: 257
+            attributes:
+                type: IPv4
+                confidence: 100
+                share_level: green
+    CLOUDFRONT:
+        author: MineMeld Core Team
+        development_status: STABLE
+        description: CLOUDFRONT ranges
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - ConfidenceHigh
+            - ShareLevelGreen
+        class: minemeld.ft.json.SimpleJSON
+        config:
+            source_name: aws.CLOUDFRONT
+            url: https://ip-ranges.amazonaws.com/ip-ranges.json
+            extractor: "prefixes[?service=='CLOUDFRONT']"
+            prefix: aws
+            indicator: ip_prefix
+            fields:
+                - region
+                - service
+            age_out:
+                default: null
+                sudden_death: true
+                interval: 257
+            attributes:
+                type: IPv4
+                confidence: 100
+                share_level: green
+    S3:
+        author: MineMeld Core Team
+        development_status: STABLE
+        description: S3 ranges
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - ConfidenceHigh
+            - ShareLevelGreen
+        class: minemeld.ft.json.SimpleJSON
+        config:
+            source_name: aws.S3
+            url: https://ip-ranges.amazonaws.com/ip-ranges.json
+            extractor: "prefixes[?service=='S3']"
+            prefix: aws
+            indicator: ip_prefix
+            fields:
+                - region
+                - service
+            age_out:
+                default: null
+                sudden_death: true
+                interval: 257
+            attributes:
+                type: IPv4
+                confidence: 100
+                share_level: green

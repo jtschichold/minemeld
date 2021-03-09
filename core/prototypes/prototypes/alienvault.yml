@@ -1,0 +1,29 @@
+description: >
+    Open Source AlienVault Reputation Data.
+url: http://labs.alienvault.com/labs/index.php/projects/open-source-ip-reputation-portal/download-ip-reputation-database/
+
+prototypes:
+    reputation:
+        author: MineMeld Core Team
+        development_status: STABLE
+        node_type: miner
+        indicator_types: [ IPv4 ]
+        tags:
+            - OSINT
+            - ShareLevelGreen
+        description: this just catches everything
+        class: minemeld.ft.csv.CSVFT
+        config:
+            url: http://reputation.alienvault.com/reputation.data
+            fieldnames:
+                - indicator
+                - alienvault_reliability
+                - alienvault_risk
+                - alienvault_type
+            delimiter: '#'
+            attributes:
+                type: IPv4
+                confidence: 80
+                share_level: green
+            source_name: alienvault.reputation
+            interval: 3600

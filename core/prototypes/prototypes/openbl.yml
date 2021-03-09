@@ -1,0 +1,189 @@
+url: https://www.openbl.org/
+description: >
+    The OpenBL.org project (formerly known as the SSH blacklist) is about
+    detecting, logging and reporting various types of internet abuse. Currently
+    our hosts monitor ports 21 (FTP), 22 (SSH), 23 (TELNET), 25 (SMTP),
+    110 (POP3), 143 (IMAP), 587 (Submission), 993 (IMAPS) and 995 (POP3S)
+    for bruteforce login attacks as well as scans on ports 80 (HTTP) and
+    443 (HTTPS) for vulnerable installations of phpMyAdmin and other
+    web applications.
+    DO NOT USE ! OPENBL has stopped operations, the prototypes are still here for
+    backwards compatibility
+
+prototypes:
+    base:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ShareLevelGreen
+            - ConfidenceMedium
+            - Deprecated
+        description: The suggested DEFAULT list
+        config:
+            source_name: openbl.base
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 50
+                share_level: green
+            ignore_regex: '^#.*'
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+    base_1days:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ShareLevelGreen
+            - ConfidenceMedium
+            - Deprecated
+        description: IP list for last 1 days
+        config:
+            source_name: openbl.base_1days
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 50
+                share_level: green
+            ignore_regex: '^#.*'
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+    base_7days:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ShareLevelGreen
+            - ConfidenceMedium
+            - Deprecated
+        description: IP list for last 7 days
+        config:
+            source_name: openbl.base_7days
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 50
+                share_level: green
+            ignore_regex: '^#.*'
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+    base_30days:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ShareLevelGreen
+            - ConfidenceMedium
+            - Deprecated
+        description: IP list for last 30 days
+        config:
+            source_name: openbl.base_30days
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 50
+                share_level: green
+            ignore_regex: '^#.*'
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+    base_60days:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ShareLevelGreen
+            - ConfidenceMedium
+            - Deprecated
+        description: IP list for last 60 days
+        config:
+            source_name: openbl.base_60days
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 50
+                share_level: green
+            ignore_regex: '^#.*'
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+    base_90days:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ShareLevelGreen
+            - ConfidenceMedium
+            - Deprecated
+        description: openbl.base_90days
+        config:
+            source_name: https://www.openbl.org/lists/base_90days.txt
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 50
+                share_level: green
+            ignore_regex: '^#.*'
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+    base_180days:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ShareLevelGreen
+            - ConfidenceMedium
+            - Deprecated
+        description: IP list for last 180 days
+        config:
+            source_name: openbl.base_180days
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 50
+                share_level: green
+            ignore_regex: '^#.*'
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
+    base_360days:
+        author: MineMeld Core Team
+        development_status: DEPRECATED
+        node_type: miner
+        indicator_types:
+            - IPv4
+        tags:
+            - OSINT
+            - ShareLevelGreen
+            - ConfidenceMedium
+            - Deprecated
+        description: IP list for last 360 days
+        config:
+            source_name: openbl.base_360days
+            attributes:
+                type: IPv4
+                direction: inbound
+                confidence: 50
+                share_level: green
+            ignore_regex: '^#.*'
+            url: https://minemeld-updates.panw.io/deprecated-feed.txt
+        class: minemeld.ft.http.HttpFT
