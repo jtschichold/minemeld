@@ -5,22 +5,14 @@ services:
     image: redis
   engine:
     image: minemeld:develop
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.develop
     volumes:
-      - ./:/opt/minemeld/engine/core
+      - ./engine:/opt/minemeld/engine/core
+      - ./prototypes/prototypes:/opt/minemeld/prototypes/current
     depends_on:
       - redis
     environment:
       - REDIS_URL=redis://redis:6379
     tty: true
-  webui:
-    image: minemeld-webui:test
-    depends_on:
-      - redis
-      - engine
-    environment:
-      - NGINX_REDIRECT_PORT=8443
-      - MINEMELD_ENGINE_HOST=engine
-      - MINEMELD_ENGINE_PORT=5000
-    ports:
-      - "8443:443"
-      - "8080:80"
