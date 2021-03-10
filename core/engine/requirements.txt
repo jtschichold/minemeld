@@ -30,3 +30,10 @@ Werkzeug==1.0.1
 pyzmq==19.0.2
 stix2-patterns==1.1.0
 antlr4-python3-runtime==4.8
+Flask==1.1.2
+Flask-Login==0.5.0
+gunicorn==20.0.4
+psutil==5.7.2
+passlib==1.7.4
+supervisor==4.2.1
+blinker==1.4

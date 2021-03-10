@@ -18,7 +18,7 @@ import time
 import json
 import copy
 
-import minemeld.run.config
+import minemeld.config
 
 from flask import request, jsonify
 
@@ -274,11 +274,11 @@ def _commit_config(version):
     # we build a copy of the config for validation
     # original config is not used because it could be modified
     # during validation
-    temp_config = minemeld.run.config.MineMeldConfig.from_dict(copy.deepcopy(newconfig))
-    valid = minemeld.run.config.resolve_prototypes(temp_config)
+    temp_config = minemeld.config.MineMeldConfig.from_dict(copy.deepcopy(newconfig))
+    valid = minemeld.config.resolve(temp_config)
     if not valid:
         raise ValueError('Error resolving prototypes')
-    messages = minemeld.run.config.validate_config(temp_config)
+    messages = temp_config.validate()
     if len(messages) != 0:
         return messages
 

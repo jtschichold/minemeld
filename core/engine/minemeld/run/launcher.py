@@ -14,7 +14,7 @@
 
 
 from minemeld import __version__
-import minemeld.run.config
+import minemeld.config
 import minemeld.comm
 import minemeld.mgmtbus
 import minemeld.chassis
@@ -39,7 +39,7 @@ gevent.monkey.patch_all(thread=False, select=False)
 LOG = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from minemeld.run.config import TMineMeldNodeConfig
+    from minemeld.config import TMineMeldNodeConfig
 
 
 def _run_chassis(fabricconfig: dict, mgmtbusconfig: dict, fts: Dict[str, 'TMineMeldNodeConfig']):
@@ -219,7 +219,7 @@ def main() -> int:
     _setup_environment(args.config)
 
     # load and validate config
-    config = minemeld.run.config.load_config(args.config)
+    config = minemeld.config.load_config(args.config)
 
     LOG.info("mm-run.py config: %s", config)
 
