@@ -8,9 +8,6 @@
     "minemeld.ft.autofocus.ExportList": {
         "class": "minemeld.ft.autofocus:ExportList"
     },
-    "minemeld.ft.azure.AzureXML": {
-        "class": "minemeld.ft.azure:AzureXML"
-    },
     "minemeld.ft.azure.AzureJSON": {
         "class": "minemeld.ft.azure:AzureJSON"
     },
@@ -29,44 +26,19 @@
     "minemeld.ft.dag_ng.DagPusher": {
         "class": "minemeld.ft.dag_ng:DagPusher"
     },
-    "minemeld.ft.google.GoogleNetBlocks": {
-        "class": "minemeld.ft.google:GoogleNetBlocks"
-    },
-    "minemeld.ft.google.GoogleCloudNetBlocks": {
-        "class": "minemeld.ft.google:GoogleCloudNetBlocks"
-    },
-    "minemeld.ft.google.GoogleSPF": {
-        "class": "minemeld.ft.google:GoogleSPF"
-    },
     "minemeld.ft.http.HttpFT": {
-        "class": "minemeld.ft.http:HttpFT"
+        "class": "minemeld.ft.http:HttpFT",
+        "validator": "minemeld.ft.validators.http:validator"
     },
     "minemeld.ft.ipop.AggregateIPv4FT": {
-        "class": "minemeld.ft.ipop:AggregateIPv4FT"
+        "class": "minemeld.ft.ipop:AggregateIPv4FT",
+        "validator": "minemeld.ft.validators.aggregateipv4:validator"
     },
     "minemeld.ft.json.SimpleJSON": {
         "class": "minemeld.ft.json:SimpleJSON"
     },
-    "minemeld.ft.local.YamlFT": {
-        "class": "minemeld.ft.local:YamlFT"
-    },
-    "minemeld.ft.local.YamlIPv4FT": {
-        "class": "minemeld.ft.local:YamlIPv4FT"
-    },
-    "minemeld.ft.local.YamlURLFT": {
-        "class": "minemeld.ft.local:YamlURLFT"
-    },
-    "minemeld.ft.local.YamlDomainFT": {
-        "class": "minemeld.ft.local:YamlDomainFT"
-    },
-    "minemeld.ft.local.YamlIPv6FT": {
-        "class": "minemeld.ft.local:YamlIPv6FT"
-    },
     "minemeld.ft.logstash.LogstashOutput": {
         "class": "minemeld.ft.logstash:LogstashOutput"
-    },
-    "minemeld.ft.o365.O365XML": {
-        "class": "minemeld.ft.o365:O365XML"
     },
     "minemeld.ft.o365.O365API": {
         "class": "minemeld.ft.o365:O365API"
@@ -96,13 +68,8 @@
         "class": "minemeld.ft.recordedfuture:MasterRiskList"
     },
     "minemeld.ft.redis.RedisSet": {
-        "class": "minemeld.ft.redis:RedisSet"
-    },
-    "minemeld.ft.syslog.SyslogMatcher": {
-        "class": "minemeld.ft.syslog:SyslogMatcher"
-    },
-    "minemeld.ft.syslog.SyslogMiner": {
-        "class": "minemeld.ft.syslog:SyslogMiner"
+        "class": "minemeld.ft.redis:RedisSet",
+        "validator": "minemeld.ft.validators.redis:validator"
     },
     "minemeld.ft.taxii.TaxiiClient": {
         "class": "minemeld.ft.taxii:TaxiiClient"

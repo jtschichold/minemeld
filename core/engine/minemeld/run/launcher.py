@@ -200,6 +200,28 @@ def main() -> int:
 
             gevent.sleep(60)
 
+    def _config_monitor(config: 'minemeld.config.MineMeldConfig') -> None:
+        mtime = os.stat(config.path).st_mtime
+        while True:
+            new_mtime = os.stat(config.path).st_mtime
+            if new_mtime != mtime:
+                try:
+                    new_config = minemeld.config.load(config.path)
+                    new_config.compute_changes(config)
+
+                except Exception as e:
+                    LOG.warning(f'Invalid config detected, ignored: {str(e)}')
+                    gevent.sleep(10)
+                    continue
+
+                reinit_needed = next((c for c in new_config.changes if c.change != minemeld.config.MineMeldConfigChange.CONFIG_HUP), None)
+                if reinit_needed is not None:
+                    LOG.info('Config change detected, reinit needed')
+                    gevent.spawn(_cleanup)
+                    break
+
+            gevent.sleep(10)
+
     args = _parse_args()
 
     # logging
@@ -219,7 +241,7 @@ def main() -> int:
     _setup_environment(args.config)
 
     # load and validate config
-    config = minemeld.config.load_config(args.config)
+    config = minemeld.config.load(args.config)
 
     LOG.info("mm-run.py config: %s", config)
 
@@ -307,6 +329,11 @@ def main() -> int:
     disk_space_monitor_glet = gevent.spawn(
         _disk_space_monitor, len(config.nodes))
 
+    config_monitor_glet = gevent.spawn(
+        _config_monitor,
+        config
+    )
+
     try:
         while not signal_received.wait(timeout=1.0):
             with processes_lock:
@@ -323,5 +350,8 @@ def main() -> int:
 
     if disk_space_monitor_glet is not None:
         disk_space_monitor_glet.kill()
+
+    if config_monitor_glet is not None:
+        config_monitor_glet.kill()
 
     return 0

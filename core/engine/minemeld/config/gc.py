@@ -8,7 +8,7 @@ from typing import (
 
 import minemeld.loader
 
-from .model import MineMeldConfig, MineMeldConfigChange
+from .minemeldconfig import MineMeldConfig, MineMeldConfigChange
 
 
 LOG = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ def destroy_old_nodes(config: 'MineMeldConfig') -> None:
     # name & config does not exist in the new config
     # the case of different node config but same and name
     # and class is handled by node itself
-    destroyed_nodes = config.deleted_nodes()
+    destroyed_nodes = [c for c in config.changes if c.change == MineMeldConfigChange.DELETED]
     LOG.info('Destroyed nodes: {!r}'.format(destroyed_nodes))
     if len(destroyed_nodes) == 0:
         return

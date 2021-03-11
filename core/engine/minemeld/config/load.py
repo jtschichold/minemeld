@@ -9,7 +9,7 @@ from typing import (
 
 import yaml
 
-from .model import TMineMeldConfig, MineMeldConfig
+from .minemeldconfig import TMineMeldConfig, MineMeldConfig
 from .prototypes import resolve
 from .gc import destroy_old_nodes
 
@@ -26,14 +26,14 @@ COMMITTED_CONFIG = 'committed-config.yml'
 RUNNING_CONFIG = 'running-config.yml'
 
 
-def _load_config_from_file(f: TextIO) -> Tuple[bool, 'MineMeldConfig']:
+def _load_config_from_file(path: str, f: TextIO) -> Tuple[bool, 'MineMeldConfig']:
     valid = True
     config: Optional[TMineMeldConfig] = yaml.safe_load(f)
 
     if not isinstance(config, dict) and config is not None:
         raise ValueError('Invalid config YAML type')
 
-    return valid, MineMeldConfig.from_dict(config)
+    return valid, MineMeldConfig.from_dict(path, config)
 
 
 def load_and_validate_config_from_file(path: str) -> Tuple[bool, Optional['MineMeldConfig']]:
@@ -43,7 +43,7 @@ def load_and_validate_config_from_file(path: str) -> Tuple[bool, Optional['MineM
     if os.path.isfile(path):
         try:
             with open(path, 'r') as cf:
-                valid, config = _load_config_from_file(cf)
+                valid, config = _load_config_from_file(path, cf)
             if not valid:
                 LOG.error('Invalid config file {}'.format(path))
         except (RuntimeError, IOError):
@@ -125,3 +125,18 @@ def load_config_from_dir(path: str) -> 'MineMeldConfig':
         return cconfig
 
     raise RuntimeError("We should not be here!!")
+
+
+def load(config_path: str) -> 'MineMeldConfig':
+    if os.path.isdir(config_path):
+        return load_config_from_dir(config_path)
+
+    # this is just a file, as we can't do a delta
+    # we just load it and mark all the nodes as added
+    valid, config = load_and_validate_config_from_file(config_path)
+    if not valid:
+        raise RuntimeError('Invalid config')
+    assert config is not None
+    config.compute_changes(None)
+
+    return config

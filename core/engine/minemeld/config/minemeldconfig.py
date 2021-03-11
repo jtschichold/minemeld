@@ -7,6 +7,7 @@ from typing import (
 )
 import os
 import re
+import logging
 
 import gevent.core
 
@@ -28,16 +29,10 @@ TMineMeldConfig = TypedDict('TMineMeldConfig', {
 }, total=False)
 
 
+LOG = logging.getLogger(__name__)
 MGMTBUS_NUM_CONNS_ENV = 'MGMTBUS_NUM_CONNS'
 FABRIC_NUM_CONNS_ENV = 'FABRIC_NUM_CONNS'
 
-
-CHANGE_ADDED = 0
-CHANGE_DELETED = 1
-CHANGE_INPUT_ADDED = 2
-CHANGE_INPUT_DELETED = 3
-CHANGE_OUTPUT_ENABLED = 4
-CHANGE_OUTPUT_DISABLED = 5
 
 _ConfigChange = namedtuple(
     '_ConfigChange',
@@ -46,11 +41,20 @@ _ConfigChange = namedtuple(
 
 _Config = namedtuple(
     '_Config',
-    ['nodes', 'fabric', 'mgmtbus', 'changes']
+    ['path', 'nodes', 'fabric', 'mgmtbus', 'changes']
 )
 
 
 class MineMeldConfigChange(_ConfigChange):
+    ADDED = 0
+    DELETED = 1
+    INPUT_ADDED = 2
+    INPUT_DELETED = 3
+    OUTPUT_ENABLED = 4
+    OUTPUT_DISABLED = 5
+    CONFIG_HUP = 6
+    CONFIG_REINIT = 7
+
     def __new__(_cls, nodename, nodeclass, change, detail=None):
         return _ConfigChange.__new__(
             _cls,
@@ -62,6 +66,7 @@ class MineMeldConfigChange(_ConfigChange):
 
 
 class MineMeldConfig(_Config):
+    path: str
     nodes: Dict[str, TMineMeldNodeConfig]
     fabric: Dict
     mgmtbus: Dict
@@ -79,9 +84,11 @@ class MineMeldConfig(_Config):
             for nodename, nodeattrs in self.nodes.items():
                 self.changes.append(
                     MineMeldConfigChange(
-                        nodename=nodename, nodeclass=nodeattrs['class'], change=CHANGE_ADDED)
+                        nodename=nodename, nodeclass=nodeattrs['class'], change=MineMeldConfigChange.ADDED)
                 )
             return
+
+        validators = minemeld.loader.map(minemeld.loader.MM_NODES_VALIDATORS_ENTRYPOINT)
 
         my_nset = self.as_nset()
         other_nset = oconfig.as_nset()
@@ -95,7 +102,7 @@ class MineMeldConfig(_Config):
             change = MineMeldConfigChange(
                 nodename=nodename,
                 nodeclass=nodeclass,
-                change=CHANGE_DELETED,
+                change=MineMeldConfigChange.DELETED,
                 detail=oconfig.nodes[nodename]
             )
             self.changes.append(change)
@@ -105,7 +112,7 @@ class MineMeldConfig(_Config):
             change = MineMeldConfigChange(
                 nodename=nodename,
                 nodeclass=nodeclass,
-                change=CHANGE_ADDED
+                change=MineMeldConfigChange.ADDED
             )
             self.changes.append(change)
 
@@ -121,7 +128,7 @@ class MineMeldConfig(_Config):
                 change = MineMeldConfigChange(
                     nodename=nodename,
                     nodeclass=nodeclass,
-                    change=CHANGE_INPUT_ADDED,
+                    change=MineMeldConfigChange.INPUT_ADDED,
                     detail=i
                 )
                 self.changes.append(change)
@@ -130,37 +137,55 @@ class MineMeldConfig(_Config):
                 change = MineMeldConfigChange(
                     nodename=nodename,
                     nodeclass=nodeclass,
-                    change=CHANGE_INPUT_DELETED,
+                    change=MineMeldConfigChange.INPUT_DELETED,
                     detail=i
                 )
                 self.changes.append(change)
 
             my_output = self.nodes[nodename].get('output', False)
             other_output = oconfig.nodes[nodename].get('output', False)
+            if my_output != other_output:
+                change_type = MineMeldConfigChange.OUTPUT_DISABLED
+                if my_output:
+                    change_type = MineMeldConfigChange.OUTPUT_ENABLED
 
-            if my_output == other_output:
+                change = MineMeldConfigChange(
+                    nodename=nodename,
+                    nodeclass=nodeclass,
+                    change=change_type
+                )
+                self.changes.append(change)
+
+            my_config = self.nodes[nodename].get('config', {})
+            other_config = oconfig.nodes[nodename].get('config', {})
+            if my_config == oconfig:
                 continue
 
-            change_type = CHANGE_OUTPUT_DISABLED
-            if my_output:
-                change_type = CHANGE_OUTPUT_ENABLED
+            vep = validators.get(nodeclass)
+            if vep is None:
+                LOG.warning(f'No validator for {nodeclass}')
+                continue
+            validator = vep.ep.load()
 
-            change = MineMeldConfigChange(
-                nodename=nodename,
-                nodeclass=nodeclass,
-                change=change_type
-            )
-            self.changes.append(change)
+            vresult = validator(my_config, other_config)
+            if len(vresult.get('errors', [])) != 0:
+                raise RuntimeError('Invalid config in change detection!')
 
-    def deleted_nodes(self) -> List[MineMeldConfigChange]:
-        return [c for c in self.changes if c.change == CHANGE_DELETED]
+            self.changes.append(
+                MineMeldConfigChange(
+                    nodename=nodename,
+                    nodeclass=nodeclass,
+                    detail=my_config,
+                    change=MineMeldConfigChange.CONFIG_REINIT if vresult.get(
+                        'requires_restart',
+                        True) else MineMeldConfigChange.CONFIG_HUP))
 
     def validate(self) -> List[str]:
         result = []
         nodes = self.nodes
 
         for n in nodes.keys():
-            if re.match('^[a-zA-Z0-9_\-]+$', n) is None:  # pylint:disable=W1401
+            if re.match(r'^[a-zA-Z0-9_\-]+$', n) is None:  # pylint:disable=W1401
                 result.append('%s node name is invalid' % n)
 
         for n, v in nodes.items():
@@ -171,9 +196,10 @@ class MineMeldConfig(_Config):
 
                 if not nodes[i].get('output', False):
                     result.append('%s -> %s output disabled' %
-                                (n, i))
+                                  (n, i))
 
         installed_nodes = minemeld.loader.map(minemeld.loader.MM_NODES_ENTRYPOINT)
+        validators = minemeld.loader.map(minemeld.loader.MM_NODES_VALIDATORS_ENTRYPOINT)
         for n, v in nodes.items():
             nclass = v.get('class', None)
             if nclass is None:
@@ -191,6 +217,16 @@ class MineMeldConfig(_Config):
                 result.append(
                     'Class {} in {} not safe to load'.format(nclass, n)
                 )
+                continue
+
+            vep = validators.get(nclass, None)
+            if vep is None:
+                LOG.warning(f'No validator for {nclass}')
+                continue
+            validator = vep.ep.load()
+            vresult = validator(v.get('config', {}))
+            for verror in vresult.get('errors', []):
+                result.append(f'Invalid config for node {n}: {verror}')
 
         if not detect_cycles(nodes):
             result.append('loop detected')
@@ -198,7 +234,7 @@ class MineMeldConfig(_Config):
         return result
 
     @classmethod
-    def from_dict(cls: Type['MineMeldConfig'], dconfig: Optional[TMineMeldConfig] = None) -> 'MineMeldConfig':
+    def from_dict(cls: Type['MineMeldConfig'], path: str, dconfig: Optional[TMineMeldConfig] = None) -> 'MineMeldConfig':
         if dconfig is None:
             dconfig = {}
 
@@ -238,12 +274,12 @@ class MineMeldConfig(_Config):
         if nodes is None:
             nodes = {}
 
-        return cls(nodes=nodes, fabric=fabric, mgmtbus=mgmtbus, changes=[])
+        return cls(path=path, nodes=nodes, fabric=fabric, mgmtbus=mgmtbus, changes=[])
 
 
-def detect_cycles(nodes: Dict[str,TMineMeldNodeConfig]) -> bool:
+def detect_cycles(nodes: Dict[str, TMineMeldNodeConfig]) -> bool:
     # using Topoligical Sorting to detect cycles in graph, see Wikipedia
-    graph: Dict[str,Dict[str,List[str]]] = {}
+    graph: Dict[str, Dict[str, List[str]]] = {}
     S = set()
     L = []
 

@@ -22,7 +22,7 @@ from typing import (
     Iterator, Optional, TYPE_CHECKING,
 )
 
-import ujson as json
+import json
 
 from . import basepoller
 from . import ft_states

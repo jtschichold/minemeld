@@ -7,7 +7,7 @@ from typing import (
 import yaml
 
 import minemeld.loader
-from .model import TMineMeldNodeConfig, MineMeldConfig
+from .minemeldconfig import TMineMeldNodeConfig, MineMeldConfig
 
 LOG = logging.getLogger(__name__)
 

@@ -32,7 +32,7 @@ from typing import (
 
 import gevent
 
-from . import condition
+from . import filters
 from . import ft_states
 from . import utils
 
@@ -42,86 +42,6 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 CountedF = TypeVar('CountedF', bound=Callable[..., Any])
-
-
-class _Filters(object):
-    """Implements a set of filters to be applied to indicators.
-    Used by mineneld.ft.base.BaseFT for ingress and egress filters.
-
-    Args:
-        filters (list): list of filters.
-    """
-    def __init__(self, filters):
-        self.filters = []
-
-        for f in filters:
-            cf = {
-                'name': f.get('name', 'filter_%d' % len(self.filters)),
-                'conditions': [],
-                'actions': []
-            }
-
-            fconditions = f.get('conditions', None)
-            if fconditions is None:
-                fconditions = []
-            for c in fconditions:
-                cf['conditions'].append(condition.Condition(c))
-
-            for a in f.get('actions'):
-                cf['actions'].append(a)
-
-            self.filters.append(cf)
-
-    def apply(self, origin: Optional[str]=None, method: Optional[str]=None,
-            indicator: Optional[str]=None, value: Optional[dict]=None) -> Tuple[Optional[str], Optional[dict]]:
-        if value is None:
-            d = {}
-        else:
-            d = copy.copy(value)
-
-        if indicator is not None:
-            d['__indicator'] = indicator
-
-        if method is not None:
-            d['__method'] = method
-
-        if origin is not None:
-            d['__origin'] = origin
-
-        for f in self.filters:
-            LOG.debug("evaluating filter %s", f['name'])
-
-            r = True
-            for c in f['conditions']:
-                r &= c.eval(d)
-
-            if not r:
-                continue
-
-            for a in f['actions']:
-                if a == 'accept':
-                    if value is None:
-                        return indicator, None
-
-                    d.pop('__indicator')
-                    d.pop('__origin', None)
-                    d.pop('__method', None)
-
-                    return indicator, d
-
-                elif a == 'drop':
-                    return None, None
-
-        LOG.debug("no matching filter, default accept")
-
-        if value is None:
-            return indicator, None
-
-        d.pop('__indicator')
-        d.pop('__origin', None)
-        d.pop('__method', None)
-
-        return indicator, d
 
 
 def _counting(statsname: str) -> Callable[[CountedF], CountedF]:
@@ -355,8 +275,8 @@ class BaseFT(object):
         When this method is changed to add/remove new parameters, the class
         docstring should be updated.
         """
-        self.infilters = _Filters(self.config.get('infilters', []))
-        self.outfilters = _Filters(self.config.get('outfilters', []))
+        self.infilters = filters.Filters(self.config.get('infilters', []))
+        self.outfilters = filters.Filters(self.config.get('outfilters', []))
 
     def connect(self, inputs: List[str], output: bool) -> None:
         if self.state != ft_states.READY:

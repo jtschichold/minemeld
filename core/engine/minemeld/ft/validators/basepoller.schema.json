@@ -1,0 +1,42 @@
+{
+    "$id": "https://github.com/PaloAltoNetworks/minemeld/ft/base.schema.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "Config schema for minemeld.ft.basepoller.BasePollerFT class",
+    "type": "object",
+    "required": [],
+    "properties": {
+        "source_name": {
+            "type": "string"
+        },
+        "attributes": {
+            "type": "object",
+            "propertyNames": {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+            }
+        },
+        "interval": {
+            "type":"integer",
+            "minimum": 1
+        },
+        "num_retries": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "age_out": {
+            "type": "object",
+            "required": [],
+            "properties": {
+                "interval": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "sudden_death": {
+                    "type": "boolean"
+                },
+                "default": {
+                    "type": ["string", "null"]
+                }
+            }
+        }
+    }
+}

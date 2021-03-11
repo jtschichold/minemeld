@@ -47,7 +47,7 @@ import gevent.lock
 import gevent.timeout
 
 import redis
-import ujson
+import json
 
 import minemeld.comm
 import minemeld.ft
@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from minemeld.chassis import Chassis
     from minemeld.ft.base import BaseFT
     from minemeld.comm.zmqredis import ZMQPubChannel
-    from minemeld.run.config import MineMeldConfig
+    from minemeld.config import MineMeldConfig
 
 from .pmcollectd import PMCollectdClient
 from .startupplanner import plan
@@ -384,7 +384,7 @@ class MgmtbusMaster(object):
             source = nodename
             self.SR.publish(
                 'mm-engine-status.'+source,
-                ujson.dumps({
+                json.dumps({
                     'source': source,
                     'timestamp': int(time.time())*1000,
                     'status': status
@@ -547,20 +547,6 @@ class MgmtbusSlaveHub(object):
             ],
             method_prefix='mgmtbus_'
         )
-        # self.comm.request_rpc_server_channel(
-        #     '{}slave:{}'.format(MGMTBUS_PREFIX, node.name),
-        #     node,
-        #     allowed_methods=[
-        #         'mgmtbus_state_info',
-        #         'mgmtbus_initialize',
-        #         'mgmtbus_rebuild',
-        #         'mgmtbus_reset',
-        #         'mgmtbus_status',
-        #         'mgmtbus_checkpoint'
-        #     ],
-        #     method_prefix='mgmtbus_',
-        #     fanout=MGMTBUS_TOPIC
-        # )
 
     def add_failure_listener(self, f: Callable[[], None]) -> None:
         self.comm.add_failure_listener(f)

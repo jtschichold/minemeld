@@ -1,0 +1,19 @@
+{
+    "$id": "https://github.com/PaloAltoNetworks/minemeld/ft/base.schema.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "Config schema for minemeld.ft.basepoller.BasePollerFT class",
+    "type": "object",
+    "required": [],
+    "properties": {
+        "whitelist_prefixes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 0
+        },
+        "enable_list_merge": {
+            "type": "boolean"
+        }
+    }
+}

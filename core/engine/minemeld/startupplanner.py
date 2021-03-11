@@ -1,10 +1,15 @@
 import logging
 from operator import itemgetter
 from collections import defaultdict
+from typing import (
+    TYPE_CHECKING, Any, Dict, Union
+)
+from minemeld.config import MineMeldConfigChange
 
 import networkx as nx
 
-from minemeld.run.config import CHANGE_INPUT_DELETED, CHANGE_ADDED, CHANGE_INPUT_ADDED
+if TYPE_CHECKING:
+    from minemeld.config import MineMeldConfig
 
 
 LOG = logging.getLogger(__name__)
@@ -31,12 +36,12 @@ def _build_graph(config):
     return graph
 
 
-def _plan_subgraph(sg, config, state_info):
+def _plan_subgraph(sg: Any, config: 'MineMeldConfig', state_info: Any) -> Dict[str, str]:
     LOG.info('state_info: {!r}'.format(state_info))
     LOG.info('planning for subgraph {!r}'.format(sg.nodes()))
     plan = {}
 
-    checkpoints = defaultdict(CheckpointNodes)
+    checkpoints: Dict[Union[None, str], CheckpointNodes] = defaultdict(CheckpointNodes)
     for nodename in sg:
         chkp = state_info[nodename].get('checkpoint', None)
         checkpoints[chkp].nodes.add(nodename)
@@ -85,12 +90,12 @@ def _plan_subgraph(sg, config, state_info):
             invalid_nodes.append(nodename)
             continue
 
-        added = next((c for c in changes[nodename] if c.change == CHANGE_ADDED), None)
+        added = next((c for c in changes[nodename] if c.change == MineMeldConfigChange.ADDED), None)
         if added is None and nodename in checkpoints[None].nodes:
             invalid_nodes.append(nodename)
             continue
 
-        ideleted = next((c for c in changes[nodename] if c.change == CHANGE_INPUT_DELETED), None)
+        ideleted = next((c for c in changes[nodename] if c.change == MineMeldConfigChange.INPUT_DELETED), None)
         if ideleted is not None:
             invalid_nodes.append(nodename)
             continue
@@ -121,7 +126,7 @@ def _plan_subgraph(sg, config, state_info):
     init_flag = True
     added_nodes = []
     for nodename, clist in changes.items():
-        added = next((c for c in clist if c.change == CHANGE_ADDED), None)
+        added = next((c for c in clist if c.change == MineMeldConfigChange.ADDED), None)
         if added is not None:
             if not state_info[nodename].get('is_source', False):
                 init_flag = False
@@ -130,7 +135,7 @@ def _plan_subgraph(sg, config, state_info):
 
     added_input_nodes = set()
     for nodename, clist in changes.items():
-        input_added = [c.detail for c in clist if c.change == CHANGE_INPUT_ADDED]
+        input_added = [c.detail for c in clist if c.change == MineMeldConfigChange.INPUT_ADDED]
         for ainode in input_added:
             if not state_info[ainode].get('is_source', False):
                 init_flag = False

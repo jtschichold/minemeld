@@ -19,7 +19,7 @@ cp -R /tmp/docker/defaults/* /opt/minemeld/
 # install MineMeld requirements files
 python3 -m venv /opt/minemeld/engine/current
 /opt/minemeld/engine/current/bin/pip3 install wheel
-cd /tmp/engine && /opt/minemeld/engine/current/bin/pip3 install -r requirements.txt -r requirements-web.txt
+cd /tmp/engine && /opt/minemeld/engine/current/bin/pip3 install -r requirements.txt
 
 # copy entrypoint and setup scripts
 cp /tmp/docker/docker-entrypoint.develop.sh /opt/minemeld

@@ -16,6 +16,10 @@ import jmespath
 import logging
 import antlr4
 import operator
+import copy
+from typing import (
+    Optional, Tuple
+)
 
 from .BoolExprParser import BoolExprParser  # noqa
 from .BoolExprLexer import BoolExprLexer  # noqa
@@ -57,7 +61,7 @@ class _BECompiler(BoolExprListener):
             self.value = True
 
 
-class Condition(object):
+class Condition:
     def __init__(self, s):
         self.expression, self.comparator, self.value = self._parse_boolexpr(s)
 
@@ -92,3 +96,83 @@ class Condition(object):
                 return False
 
         return self.comparator(r, self.value)
+
+
+class Filters:
+    """Implements a set of filters to be applied to indicators.
+    Used by mineneld.ft.base.BaseFT for ingress and egress filters.
+
+    Args:
+        filters (list): list of filters.
+    """
+    def __init__(self, filters):
+        self.filters = []
+
+        for f in filters:
+            cf = {
+                'name': f.get('name', 'filter_%d' % len(self.filters)),
+                'conditions': [],
+                'actions': []
+            }
+
+            fconditions = f.get('conditions', None)
+            if fconditions is None:
+                fconditions = []
+            for c in fconditions:
+                cf['conditions'].append(Condition(c))
+
+            for a in f.get('actions'):
+                cf['actions'].append(a)
+
+            self.filters.append(cf)
+
+    def apply(self, origin: Optional[str]=None, method: Optional[str]=None,
+            indicator: Optional[str]=None, value: Optional[dict]=None) -> Tuple[Optional[str], Optional[dict]]:
+        if value is None:
+            d = {}
+        else:
+            d = copy.copy(value)
+
+        if indicator is not None:
+            d['__indicator'] = indicator
+
+        if method is not None:
+            d['__method'] = method
+
+        if origin is not None:
+            d['__origin'] = origin
+
+        for f in self.filters:
+            LOG.debug("evaluating filter %s", f['name'])
+
+            r = True
+            for c in f['conditions']:
+                r &= c.eval(d)
+
+            if not r:
+                continue
+
+            for a in f['actions']:
+                if a == 'accept':
+                    if value is None:
+                        return indicator, None
+
+                    d.pop('__indicator')
+                    d.pop('__origin', None)
+                    d.pop('__method', None)
+
+                    return indicator, d
+
+                elif a == 'drop':
+                    return None, None
+
+        LOG.debug("no matching filter, default accept")
+
+        if value is None:
+            return indicator, None
+
+        d.pop('__indicator')
+        d.pop('__origin', None)
+        d.pop('__method', None)
+
+        return indicator, d
