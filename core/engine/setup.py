@@ -66,6 +66,7 @@ setup(
     ],
     long_description=_long_description,
     packages=_packages,
+    package_data={"":["*.schema.json"]},
     provides=['minemeld'],
     install_requires=_requirements,
     ext_modules={},
