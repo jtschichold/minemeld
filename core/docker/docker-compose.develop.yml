@@ -15,4 +15,5 @@ services:
       - redis
     environment:
       - REDIS_URL=redis://redis:6379
+      - MM_VERBOSE=1
     tty: true

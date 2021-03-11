@@ -162,8 +162,6 @@ class ZMQRpcFanoutClientChannel(object):
         if self.reply_socket is None:
             return False
 
-        LOG.debug(
-            'RPC Fanout reply recving from {}:reply'.format(self.fanout))
         try:
             body = self.reply_socket.recv_json(flags=zmq.NOBLOCK)
 
@@ -338,8 +336,6 @@ class ZMQRpcServerChannel(object):
             LOG.error(
                 f'Run called with invalid socket in RPC server channel: {self.name}')
             return False
-
-        LOG.debug(f'RPC Server receiving from {self.name} - {self.fanout}')
 
         try:
             toks = self.socket.recv_multipart(flags=zmq.NOBLOCK)
