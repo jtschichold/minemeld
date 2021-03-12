@@ -71,7 +71,6 @@ class PMCollectdClient(object):
         with self.SR.pipeline(transaction=False) as pipe:
             for m in metrics:
                 identifier, value = m
-                LOG.info(f"metric: {identifier}: {value}")
 
                 if value > MAX_VALUE or value < -MAX_VALUE:
                     LOG.error(f"Metric value too large for {identifier}: {value}")
