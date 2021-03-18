@@ -41,8 +41,7 @@ class OrchestratorCmdTimeout(Exception):
 
 
 class Orchestrator:
-    def __init__(self, ftlist: 'MineMeldConfig', chassis_plan: List[List[str]]):
-        self.ftlist = ftlist
+    def __init__(self, chassis_plan: List[List[str]]):
         self.chassis_plan = chassis_plan
 
         self._chassis: List[int] = []

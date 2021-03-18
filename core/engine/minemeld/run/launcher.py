@@ -14,10 +14,6 @@
 
 
 from minemeld import __version__
-import minemeld.config
-import minemeld.comm
-import minemeld.mgmtbus
-import minemeld.chassis
 import psutil
 from typing import (
     Type, List, TYPE_CHECKING,
@@ -30,35 +26,40 @@ import multiprocessing
 import signal
 import logging
 import os.path
+
 import gevent
 import gevent.signal
 import gevent.monkey
 gevent.monkey.patch_all(thread=False, select=False)
 
+from minemeld.chassis import Chassis
+from minemeld.orchestrator import Orchestrator
+from minemeld.defaults import DEFAULT_MINEMELD_MAX_CHASSIS
+import minemeld.config
+
+if TYPE_CHECKING:
+    from minemeld.config import MineMeldConfig
+
 
 LOG = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    from minemeld.config import TMineMeldNodeConfig
-
-
-def _run_chassis(fabricconfig: dict, mgmtbusconfig: dict, fts: Dict[str, 'TMineMeldNodeConfig']):
+def _run_chassis(chassis_id: int, chassis_plan: List[List[str]], config: 'MineMeldConfig'):
     try:
         # lower priority to make master and web
         # more "responsive"
         os.nice(5)
 
-        c = minemeld.chassis.Chassis(
-            fabricconfig['class'],
-            fabricconfig['config'],
-            mgmtbusconfig
+        chassis = Chassis(
+            chassis_id=chassis_id,
+            chassis_plan=chassis_plan,
+            config=config
         )
-        c.configure(fts)
+        chassis.initialize()
 
-        gevent.signal.signal(signal.SIGUSR1, c.sig_stop)
+        gevent.signal.signal(signal.SIGUSR1, chassis.on_sig_stop)
 
-        while not c.fts_init():
-            if c.poweroff.wait(timeout=0.1) is not None:
+        while not chassis.fts_init():
+            if chassis.poweroff.wait(timeout=0.1) is not None:
                 break
 
             gevent.sleep(1)
@@ -66,12 +67,12 @@ def _run_chassis(fabricconfig: dict, mgmtbusconfig: dict, fts: Dict[str, 'TMineM
         LOG.info('Nodes initialized')
 
         try:
-            c.poweroff.wait()
+            chassis.poweroff.wait()
             LOG.info('power off')
 
         except KeyboardInterrupt:
             LOG.error("We should not be here !")
-            c.stop()
+            chassis.stop()
 
     except Exception:
         LOG.exception('Exception in chassis main procedure')
@@ -152,14 +153,14 @@ def _setup_environment(config: str) -> None:
 
 
 def main() -> int:
-    mbusmaster = None
+    orchestrator = None
     processes_lock = None
     processes = None
     disk_space_monitor_glet = None
 
     def _cleanup():
-        if mbusmaster is not None:
-            mbusmaster.checkpoint_graph()
+        if orchestrator is not None:
+            orchestrator.checkpoint_graph()
 
         if processes_lock is None:
             signal_received.set()
@@ -251,7 +252,7 @@ def main() -> int:
 
     np = args.multiprocessing
     if np == 0:
-        np = multiprocessing.cpu_count()
+        np = os.environ.get('MINEMELD_MAX_CHASSIS', DEFAULT_MINEMELD_MAX_CHASSIS)
     LOG.info('multiprocessing: #cores: %d', multiprocessing.cpu_count())
     LOG.info("multiprocessing: max #chassis: %d", np)
 
@@ -266,32 +267,25 @@ def main() -> int:
     )
     LOG.info("Number of chassis: %d", np)
 
-    ftlists: List[Dict[str, 'TMineMeldNodeConfig']] = [{} for j in range(np)]
-    j = 0
-    for ft in config.nodes:
-        pn = j % len(ftlists)
-        ftlists[pn][ft] = config.nodes[ft]
-        j += 1
-
-    # cleanup
-    if config.mgmtbus['transport']['class'] != config.fabric['class']:
-        raise ValueError('mgmtbus class and fabric class should match')
-    minemeld.comm.cleanup(config.fabric['class'], config.fabric['config'])
+    chassis_plan: List[List[str]] = [[] for j in range(np)]
+    for j, ft in enumerate(config.nodes.keys()):
+        pn = j % len(chassis_plan)
+        chassis_plan[pn].append(ft)
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
 
     processes = []
-    for g in ftlists:
-        if len(g) == 0:
+    for chassis_id in range(len(chassis_plan)):
+        if len(chassis_plan[chassis_id]) == 0:
             continue
 
         p = multiprocessing.Process(
             target=_run_chassis,
-            args=(
-                config.fabric,
-                config.mgmtbus,
-                g
+            kwargs=dict(
+                chassis_id=chassis_id,
+                chassis_plan=chassis_plan,
+                config=config
             )
         )
         processes.append(p)
@@ -304,21 +298,17 @@ def main() -> int:
     gevent.signal.signal(signal.SIGTERM, _sigterm_handler)
 
     try:
-        mbusmaster = minemeld.mgmtbus.master_factory(
-            config=config.mgmtbus['master'],
-            comm_class=config.mgmtbus['transport']['class'],
-            comm_config=config.mgmtbus['transport']['config'],
-            nodes=list(config.nodes.keys()),
-            num_chassis=len(processes)
+        orchestrator = Orchestrator(
+            chassis_plan=chassis_plan
         )
-        mbusmaster.start()
-        mbusmaster.wait_for_chassis(timeout=10)
+        orchestrator.start()
+        orchestrator.wait_for_chassis(timeout=10)
         # here nodes are all CONNECTED, fabric and mgmtbus up, with mgmtbus
         # dispatching and fabric not dispatching
-        mbusmaster.start_status_monitor()
-        mbusmaster.init_graph(config)
+        orchestrator.start_status_monitor()
+        orchestrator.init_graph(config)
         # here nodes are all INIT
-        mbusmaster.start_chassis()
+        orchestrator.start_chassis()
         # here nodes should all be starting
 
     except Exception:

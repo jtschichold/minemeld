@@ -355,7 +355,7 @@ class Chassis:
                 return False
         return True
 
-    def sig_stop(self, signum: int, sigstack: Any) -> None:
+    def on_sig_stop(self, signum: int, sigstack: Any) -> None:
         gevent.spawn(self.stop)
 
     def stop(self) -> None:
