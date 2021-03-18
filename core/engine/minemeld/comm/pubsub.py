@@ -1,320 +1,342 @@
+import array
 import logging
 import json
-from random import shuffle
+import time
+import struct
+import random
+from itertools import chain
 from typing import (
-    Optional, Any, Dict, Union, List, Callable
+    Optional, Any, Dict, Union, List, Callable,
+    Tuple, TYPE_CHECKING, cast, Sequence, Protocol
 )
-from hashlib import sha1
-from collections import defaultdict
+from collections import defaultdict, deque
+from multiprocessing.shared_memory import SharedMemory
 
 import gevent
-import redis
+import gevent.event
+import msgpack
 
 
+PAGE_SIZE = 4 * 1024
+PUB_QUEUE_MAXLEN = 1024
+PUB_QUEUE_ENTRY_MAXLEN = 2 * PAGE_SIZE
+PUB_MAX_SUBSCRIBERS = (PUB_QUEUE_ENTRY_MAXLEN // 4) - 1
 LOG = logging.getLogger(__name__)
 
 
-PUBLISH = b"""
-local function publish (queue, subscribers, msg_number, msg)
-    redis.call(
-        'rpush', queue, msg
-    )
-    local num_subscribers = redis.call('llen', subscribers)
+class PubSubHandler(Protocol):
+    def __call__(self, method, **kwargs) -> Any:
+        ...
 
-    for s=0,(num_subscribers-1) do
-        local subscriber_wl = subscribers .. ':' .. tostring(s)
-        redis.call(
-            'lpush',
-            subscriber_wl,
-            msg_number
+
+class CircularBuffer:
+    def __init__(self, name: str):
+        self.name = name
+        self.owned: bool = False
+        self.shm: Optional[SharedMemory] = None
+        self.subscribers_shm: Optional[memoryview] = None
+
+    def create(self) -> None:
+        assert self.shm is None
+
+        self.shm = SharedMemory(
+            name=self.name,
+            create=True,
+            size=(PUB_QUEUE_ENTRY_MAXLEN * PUB_QUEUE_MAXLEN + (PUB_MAX_SUBSCRIBERS * 4) + 4)
         )
-        redis.call(
-            'ltrim',
-            subscriber_wl,
-            0, 0
+        self.owned = True
+        self.subscribers_shm = self.shm.buf.cast('I')
+
+    def load(self) -> None:
+        assert self.shm is None
+
+        self.shm = SharedMemory(
+            name=self.name,
+            create=False
         )
-    end
+        self.owned = False
+        self.subscribers_shm = self.shm.buf.cast('I')
 
-    return redis.status_reply("OK")
-end
+    def write_next(self) -> int:
+        assert self.subscribers_shm is not None
 
-return publish(ARGV[1],ARGV[2],ARGV[3],ARGV[4])
-"""
-PUBLISH_SHA1 = sha1(PUBLISH).hexdigest()
+        return self.subscribers_shm[0]
+
+    def set_write_next(self, n: int) -> None:
+        assert self.subscribers_shm is not None
+
+        self.subscribers_shm[0] = n  # type: ignore
+
+    def read_next(self, subscriber: int) -> int:
+        assert self.subscribers_shm is not None
+
+        return self.subscribers_shm[1 + subscriber]
+
+    def set_read_next(self, subscriber: int, n: int) -> None:
+        assert self.subscribers_shm is not None
+
+        self.subscribers_shm[1 + subscriber] = n  # type: ignore
+
+    def queue_entry_limits(self, n, msg_size = None) -> Tuple[int, int]:
+        if msg_size is None:
+            msg_size = PUB_QUEUE_ENTRY_MAXLEN
+        offset = (PUB_MAX_SUBSCRIBERS * 4) + 4 + n * PUB_QUEUE_ENTRY_MAXLEN
+        return (
+            offset,
+            offset + msg_size
+        )
+
+    def dispose(self):
+        if self.subscribers_shm is not None:
+            self.subscribers_shm.release()
+            self.subscribers_shm = None
+
+        if self.shm is not None:
+            self.shm.close()
+            if self.owned:
+                self.shm.unlink()
+            self.shm = None
+
+        self.owned = False
 
 
+# The layout of the shared memory
+# +--next--+---- subscribers counters (PUB_MAX_SUBSCRIBERS * 4) ---+-- queue (PUB_QUEUE_ENTRY_MAXLEN * PUB_QUEUE_MAXLEN) --+
+# Each subscriber counter is a 4 bytes integer
+# Each element in the queue is PUB_QUEUE_ENTRY_MAXLEN
 class Publisher:
-    redis_client: Optional[redis.Redis]
+    def __init__(self, topic: str, num_subscribers: int):
+        if num_subscribers > PUB_MAX_SUBSCRIBERS:
+            raise RuntimeError('Too many subscribers!')
 
-    def __init__(self, topic: str, connection_pool: redis.ConnectionPool):
         self.topic = topic
-        self.prefix = 'mm:topic:{}'.format(self.topic)
-        self.connection_pool = connection_pool
-        self.redis_client = None
-        self.num_publish = 0
-        self.publish_sha1 = PUBLISH_SHA1
+        self.num_subscribers = num_subscribers
+        self.counter = 0
+        self.circular_buffer: Optional[CircularBuffer] = None
 
-    def lagger(self) -> int:
-        assert self.redis_client is not None
-
-        # get status of subscribers
-        subscribersc: List[bytes] = self.redis_client.lrange(
-            '{}:subscribers'.format(self.prefix),
-            0, -1
-        )
-        decoded_subscribersc = [int(sc) for sc in subscribersc]
-
-        # check the lagger
-        minsubc = self.num_publish
-        if len(decoded_subscribersc) != 0:
-            minsubc = min(decoded_subscribersc)
-
-        return minsubc
-
-    def gc(self, lagger: int) -> None:
-        assert self.redis_client is not None
-
-        minhighbits = lagger >> 12
-
-        minqname = '{}:queue:{:013X}'.format(
-            self.prefix,
-            minhighbits
-        )
-
-        # delete all the lists before the lagger
-        queues: List[bytes] = self.redis_client.keys(f'{self.prefix}:queue:*')
-        LOG.debug('topic {} - queues: {!r}'.format(self.topic, queues))
-        queues = [q for q in queues if q.decode('utf-8') < minqname]
-        LOG.debug(
-            'topic {} - queues to be deleted: {!r}'.format(self.topic, queues))
-        if len(queues) != 0:
-            LOG.debug('topic {} - deleting {!r}'.format(
-                self.topic,
-                queues
-            ))
-            self.redis_client.delete(*queues)
+        self.wait_slots = 1
+        self.next_check = 0.0
+        self.waiting: Optional[gevent.event.Event] = None
 
     def publish(self, method: str, params: Optional[Dict[str, Union[str, int, bool]]] = None) -> None:
-        assert self.redis_client is not None
+        assert self.circular_buffer is not None
+        assert self.circular_buffer.shm is not None
+        assert self.circular_buffer.subscribers_shm is not None
 
-        high_bits = self.num_publish >> 12
-        low_bits = self.num_publish & 0xfff
+        while self.full():
+            self.next_check = time.time() + self.wait_slots * 0.01
+            self.waiting = gevent.event.Event()
+            self.waiting.wait()
+        self.waiting = None
+        self.wait_slots = 1
 
-        if (low_bits % 128) == 127:
-            lagger = self.lagger()
-            LOG.debug('topic {} - sent {} lagger {}'.format(
-                self.topic,
-                self.num_publish,
-                lagger
-            ))
+        cnext = self.circular_buffer.write_next()
+        msg_encoded = msgpack.packb({
+            "method": method,
+            "params": params
+        })
+        if len(msg_encoded) > PUB_QUEUE_ENTRY_MAXLEN:
+            raise RuntimeError(f'Msg not sent, too big: {len(msg_encoded)}')
+        boundaries = self.circular_buffer.queue_entry_limits(cnext, len(msg_encoded))
+        self.circular_buffer.shm.buf[boundaries[0] : boundaries[1]] = msg_encoded
 
-            wait_time = 1
-            while (self.num_publish - lagger) > 1024:
-                LOG.debug('topic {} - waiting lagger delta: {}'.format(
-                    self.topic,
-                    self.num_publish - lagger
-                ))
-                gevent.sleep(0.01 * wait_time)
+        self.circular_buffer.set_write_next((cnext + 1) % PUB_QUEUE_MAXLEN)
+        self.counter += 1
 
-                wait_time = wait_time * 2
-                if wait_time > 100:
-                    wait_time = 100
+    def full(self) -> bool:
+        assert self.circular_buffer is not None
+        assert self.circular_buffer.subscribers_shm is not None
 
-                lagger = self.lagger()
+        full_value = (self.circular_buffer.write_next() + 1) % PUB_QUEUE_MAXLEN
+        for sn in range(0, self.num_subscribers):
+            if self.circular_buffer.subscribers_shm[sn + 1] == full_value:
+                return True
+        return False
 
-            if low_bits == 0xfff:
-                # we are switching to a new list, gc
-                self.gc(lagger)
+    def connect(self, circular_buffer: CircularBuffer):
+        assert circular_buffer.subscribers_shm is not None
 
-        msg = {
-            'method': method,
-            'params': params
-        }
+        self.circular_buffer = circular_buffer
 
-        self.redis_client.evalsha(
-            self.publish_sha1,
-            0,
-            f'{self.prefix}:queue:{high_bits:013X}',
-            f'{self.prefix}:subscribers',
-            self.num_publish,
-            json.dumps(msg)
-        )
-
-        self.num_publish += 1
-
-    def connect(self):
-        if self.redis_client is not None:
-            return
-
-        self.redis_client = redis.Redis(
-            connection_pool=self.connection_pool
-        )
-
-        scripts_exist: List[bool] = self.redis_client.script_exists(
-            PUBLISH_SHA1
-        )
-        if not scripts_exist[0]:
-            self.publish_sha1 = self.redis_client.script_load(PUBLISH)
-            if self.publish_sha1 != PUBLISH_SHA1:
-                raise RuntimeError(
-                    f'Redis calculated SHA1 for publish script differs from our value! {self.publish_sha1} vs {PUBLISH_SHA1}')
+        assert self.circular_buffer.subscribers_shm is not None
+        for i in range(self.num_subscribers + 1):
+            self.circular_buffer.subscribers_shm[i] = 0  # type: ignore
 
     def disconnect(self):
-        self.redis_client = None
-        self.publish_sha1 = PUBLISH_SHA1
+        self.circular_buffer = None
 
 
 class Subscriber:
-    sub_number: Optional[int]
-    redis_client: Optional[redis.Redis]
-
-    def __init__(self, topic: str, connection_pool: redis.ConnectionPool, handler: Callable[[bytes], None]):
+    def __init__(self, topic: str, subscriber_number: int, handler: PubSubHandler):
         self.topic = topic
-        self.prefix = 'mm:topic:{}'.format(self.topic)
-        self.channel = None
-        self.connection_pool = connection_pool
-        self.handler = handler
+        self.subscriber_number = subscriber_number
+        self.handler: PubSubHandler = handler
+        self.next_check = 0.0
+        self.wait_slots = 1
+        self.circular_buffer: Optional[CircularBuffer] = None
 
-        self.sub_number = None
-        self.redis_client = None
-
-        self.counter = 0
-        self.subscribers_key = '{}:subscribers'.format(self.prefix)
-        self.subscriber_list: Optional[str] = None
-
-    def connect(self):
-        if self.redis_client is None:
-            self.redis_client = redis.Redis(connection_pool=self.connection_pool)
-
-        if self.sub_number is None:
-            self.sub_number = self.redis_client.rpush(
-                self.subscribers_key,
-                0
-            )
-            self.sub_number -= 1
-            self.subscriber_list = f'{self.subscribers_key}:{self.sub_number}'.encode('utf-8')
-            LOG.debug('Sub Number {} on {}'.format(
-                self.sub_number, self.subscribers_key))
+    def connect(self, circular_buffer: CircularBuffer) -> None:
+        self.circular_buffer = circular_buffer
 
     def disconnect(self):
-        self.redis_client = None
-        self.sub_number = None
-        self.subscriber_list = None
+        self.circular_buffer = None
+
+    def ready(self) -> bool:
+        assert self.circular_buffer is not None
+
+        return self.circular_buffer.write_next() != self.circular_buffer.read_next(self.subscriber_number)
 
     def consume(self) -> bool:
-        assert self.redis_client is not None
-        assert self.sub_number is not None
+        assert self.circular_buffer is not None
+        assert self.circular_buffer.shm is not None
+        assert self.circular_buffer.subscribers_shm is not None
+    
+        cnext = self.circular_buffer.write_next()
+        snext = self.circular_buffer.read_next(self.subscriber_number)
 
-        base = self.counter & 0xfff
-        top = min(base + 127, 0xfff)
+        if cnext == snext:
+            # empty
+            self.next_check = time.time() + self.wait_slots * 0.01
+            self.wait_slots = min(100, self.wait_slots * 2)
+            return False
 
-        msgs = self.redis_client.lrange(
-            '{}:queue:{:013X}'.format(self.prefix, self.counter >> 12),
-            base,
-            top
-        )
+        # not empty, reset waiting state
+        self.wait_slots = 1
 
-        for m in msgs:
-            self.handler(m)
+        ranges = []
+        if snext < cnext:
+            ranges.append(range(snext, cnext))
+        else:
+            ranges.append(range(snext, PUB_QUEUE_MAXLEN))
+            ranges.append(range(cnext))
+        
+        count = 0
+        for mn in chain(*ranges):
+            count += 1
+            unpacker = msgpack.Unpacker()
+            try:
+                boundaries = self.circular_buffer.queue_entry_limits(mn)
+                unpacker.feed(self.circular_buffer.shm.buf[boundaries[0] : boundaries[1]])
+                if (msg := next(unpacker, None)) is None:
+                    LOG.error('No message')
+                    continue
+                
+                method = msg.get('method', None)
+                if method is None:
+                    LOG.error(f'No method attribute in message')
+                    continue
 
-        self.counter += len(msgs)
+                params = msg.get('params', {})
 
-        if len(msgs) > 0:
-            self.redis_client.lset(
-                self.subscribers_key,
-                self.sub_number,
-                self.counter
-            )
+                self.handler(method, **params)
 
-        return len(msgs) > 0
+            except gevent.GreenletExit:
+                raise
+
+            except Exception:
+                LOG.error('Error handling message: ', exc_info=True)
+
+        LOG.debug(f'consumed: {count}')
+
+        self.circular_buffer.set_read_next(self.subscriber_number, cnext)
+        self.next_check = time.time() + self.wait_slots * 0.01
+
+        return True
 
 
 class Reactor:
-    def __init__(self, connection_pool: redis.ConnectionPool):
-        self.connection_pool = connection_pool
-        self.redis_client: Optional[redis.Redis] = None
+    def __init__(self, path: str, topics: List[Tuple[str,Optional[int]]]):
         self.publishers: List[Publisher] = []
         self.subscribers: List[Subscriber] = []
+        self.path = path
+        self.topics = topics
+        self.circular_buffers: Dict[str, CircularBuffer] = {}
+        self.initialize_circular_buffers(topics)
+
+    def initialize_circular_buffers(self, topics: List[Tuple[str,Optional[int]]]):
+        for topic, num_subscribers in topics:
+            if num_subscribers is None:
+                self.circular_buffers[topic] = CircularBuffer(
+                    name=topic
+                )
+            else:
+                self.circular_buffers[topic] = CircularBuffer(
+                    name=topic
+                )
+                self.circular_buffers[topic].create()
 
     def new_publisher(self, topic: str) -> Publisher:
+        if (topic_info := next((t for t in self.topics if t[0] == topic), None)) is None:
+            raise RuntimeError(f'Unknown topic {topic}')
+        if topic_info[1] is None:
+            raise RuntimeError(f'Publisher requested for subscriber topic {topic}')
+        
         p = Publisher(
-            topic,
-            self.connection_pool
+            topic=topic,
+            num_subscribers=topic_info[1]
         )
         self.publishers.append(p)
 
         return p
 
-    def new_subscriber(self, topic: str, connection_pool: redis.ConnectionPool, handler: Callable[[bytes], None]) -> Subscriber:
+    def new_subscriber(self, subscriber_number: int, topic: str, handler: PubSubHandler) -> Subscriber:
+        if next((t for t in self.topics if t[0] == topic), None) is None:
+            raise RuntimeError(f'Unknown topic {topic}')
+
         s = Subscriber(
-            topic,
-            connection_pool,
-            handler
+            topic=topic,
+            subscriber_number=subscriber_number,
+            handler=handler
         )
         self.subscribers.append(s)
 
         return s
 
-    def select(self) -> Optional[Subscriber]:
-        if self.redis_client is None:
-            self.redis_client = redis.Redis(
-                connection_pool=self.connection_pool
-            )
-
-        sublists: Dict[str, Subscriber] = {s.subscriber_list: s for s in self.subscribers if s.subscriber_list is not None}
-        if len(sublists) == 0:
+    def wait_interval(self) -> Optional[float]:
+        waiting_publishers = [p.next_check for p in self.publishers if p.waiting is not None]
+        if len(self.subscribers) == 0 and len(waiting_publishers) == 0:
             return None
 
-        while True:
-            keys = list(sublists.keys())
-            shuffle(keys)
-            ready = self.redis_client.blpop(keys=keys, timeout=0)
-            if ready is None:
-                continue
+        now = time.time()
+        next_check = min(
+            *[s.next_check for s in self.subscribers],
+            *waiting_publishers
+        )
+        return max(0.0, next_check - now)
 
-            if ready[0] not in sublists:
-                LOG.warning(f'Unknown sublist: {ready[0]}')
-                continue
+    def dispatch(self) -> None:
+        now = time.time()
+        waiting_subscribers = [s for s in self.subscribers if s.next_check <= now]
+        if len(waiting_subscribers) != 0:
+            random.shuffle(waiting_subscribers)
+            for s in waiting_subscribers:
+                if s.consume():
+                    return
 
-            if sublists[ready[0]].counter > int(ready[1].decode('utf-8')):
-                LOG.debug(f'Old counter on {ready[0]} - ignored')
-                continue
-
-            return sublists[ready[0]]
-
-    def run(self):
-        # for testing
-        while True:
-            ready_subscriber = self.select()
-            LOG.debug(f'Selector: ready {ready_subscriber.subscriber_list}')
-            if ready_subscriber is None:
-                return
-
-            while ready_subscriber.consume():
-                pass
+        waiting_publishers = [p for p in self.publishers if p.waiting is not None and p.next_check <= now and not p.waiting.is_set()]
+        if len(waiting_publishers) != 0:
+            p = random.choice(waiting_publishers)
+            assert p.waiting is not None
+            p.waiting.set()
 
     def connect(self):
-        for s in self.subscribers:
-            s.connect()
-
         for p in self.publishers:
-            p.connect()
+            p.connect(self.circular_buffers[p.topic])
+
+        for cb in self.circular_buffers.values():
+            if cb.owned:
+                continue
+            cb.load()
+
+        for s in self.subscribers:
+            s.connect(self.circular_buffers[s.topic])
 
     def disconnect(self):
         for s in self.subscribers:
             s.disconnect()
-
+        
         for p in self.publishers:
             p.disconnect()
 
-    @staticmethod
-    def cleanup(connection_pool: redis.ConnectionPool):
-        redis_client: Optional[redis.Redis] = redis.Redis(connection_pool=connection_pool)
-        assert redis_client is not None
-
-        tkeys: List[bytes] = redis_client.keys(pattern='mm:topic:*')
-        if len(tkeys) > 0:
-            LOG.info('Deleting old keys: {}'.format(len(tkeys)))
-            redis_client.delete(*tkeys)
-
-        redis_client = None
+        for cb in self.circular_buffers.values():
+            cb.dispose()

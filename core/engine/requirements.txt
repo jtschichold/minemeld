@@ -27,7 +27,7 @@ lz4==3.1.0
 networkx==1.11
 unicodecsv==0.14.1
 Werkzeug==1.0.1
-pyzmq==19.0.2
+pyzmq==22.0.3
 stix2-patterns==1.1.0
 antlr4-python3-runtime==4.8
 Flask==1.1.2

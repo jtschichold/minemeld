@@ -166,7 +166,7 @@ def _plan_subgraph(sg: Any, config: 'MineMeldConfig', state_info: Any) -> Dict[s
     return plan
 
 
-def plan(config, state_info):
+def plan(config, state_info) -> Dict[str, str]:
     """Defines a startup plan for the MineMeld graph.
 
     Args:

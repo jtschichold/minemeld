@@ -1,17 +1,19 @@
+from typing import Protocol, Optional
+
+from minemeld.chassis import RPCNodeAsyncAnswer
 from minemeld.loader import load, MM_NODES_ENTRYPOINT
 
 
-def factory(classname, name, chassis, config):
+def factory(classname, name, chassis):
     node_class = load(MM_NODES_ENTRYPOINT, classname)
 
     return node_class(
         name=name,
-        chassis=chassis,
-        config=config
+        chassis=chassis
     )
 
 
-class ft_states(object):
+class ft_states:
     READY = 0
     CONNECTED = 1
     REBUILDING = 2
@@ -21,3 +23,15 @@ class ft_states(object):
     CHECKPOINT = 6
     IDLE = 7
     STOPPED = 8
+
+
+class ChassisNode(Protocol):
+    state: int
+    def start(self) -> None:
+        ...
+
+    def stop(self) -> None:
+        ...
+
+    def on_msg(self, method: str, **kwargs) -> Optional[RPCNodeAsyncAnswer]:
+        ...
