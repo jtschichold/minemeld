@@ -23,8 +23,6 @@ TMineMeldNodeConfig = TypedDict('TMineMeldNodeConfig', {
 }, total=False)
 
 TMineMeldConfig = TypedDict('TMineMeldConfig', {
-    'fabric': Dict,
-    'mgmtbus': Dict,
     'nodes': Dict[str, TMineMeldNodeConfig]
 }, total=False)
 
@@ -41,7 +39,7 @@ _ConfigChange = namedtuple(
 
 _Config = namedtuple(
     '_Config',
-    ['path', 'nodes', 'fabric', 'mgmtbus', 'changes']
+    ['path', 'nodes', 'changes']
 )
 
 
@@ -68,8 +66,6 @@ class MineMeldConfigChange(_ConfigChange):
 class MineMeldConfig(_Config):
     path: str
     nodes: Dict[str, TMineMeldNodeConfig]
-    fabric: Dict
-    mgmtbus: Dict
     changes: List[MineMeldConfigChange]
 
     def as_nset(self) -> Set[Tuple[str, Optional[str]]]:
@@ -238,43 +234,11 @@ class MineMeldConfig(_Config):
         if dconfig is None:
             dconfig = {}
 
-        fabric = dconfig.get('fabric', None)
-        if fabric is None:
-            fabric_num_conns = int(
-                os.getenv(FABRIC_NUM_CONNS_ENV, 50)
-            )
-
-            fabric = {
-                'class': 'ZMQRedis',
-                'config': {
-                    'num_connections': fabric_num_conns,
-                    'priority': gevent.core.MINPRI  # pylint:disable=E1101
-                }
-            }
-
-        mgmtbus = dconfig.get('mgmtbus', None)
-        if mgmtbus is None:
-            mgmtbus_num_conns = int(
-                os.getenv(MGMTBUS_NUM_CONNS_ENV, 10)
-            )
-
-            mgmtbus = {
-                'transport': {
-                    'class': 'ZMQRedis',
-                    'config': {
-                        'num_connections': mgmtbus_num_conns,
-                        'priority': gevent.core.MAXPRI  # pylint:disable=E1101
-                    }
-                },
-                'master': {},
-                'slave': {}
-            }
-
         nodes = dconfig.get('nodes', None)
         if nodes is None:
             nodes = {}
 
-        return cls(path=path, nodes=nodes, fabric=fabric, mgmtbus=mgmtbus, changes=[])
+        return cls(path=path, nodes=nodes, changes=[])
 
 
 def detect_cycles(nodes: Dict[str, TMineMeldNodeConfig]) -> bool:

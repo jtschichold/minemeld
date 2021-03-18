@@ -2,6 +2,7 @@ from typing import Protocol, Optional
 
 from minemeld.chassis import RPCNodeAsyncAnswer
 from minemeld.loader import load, MM_NODES_ENTRYPOINT
+from minemeld.comm.pubsub import Publisher
 
 
 def factory(classname, name, chassis):
@@ -27,6 +28,9 @@ class ft_states:
 
 class ChassisNode(Protocol):
     state: int
+    def connect(self, p: Publisher) -> None:
+        ...
+
     def start(self) -> None:
         ...
 

@@ -341,7 +341,8 @@ def main() -> int:
     if disk_space_monitor_glet is not None:
         disk_space_monitor_glet.kill()
 
-    if config_monitor_glet is not None:
-        config_monitor_glet.kill()
+    # XXX - temporary disabled
+    # if config_monitor_glet is not None:
+    #    config_monitor_glet.kill()
 
     return 0

@@ -30,7 +30,7 @@ import gevent.event
 EPOCH = datetime.datetime.utcfromtimestamp(0).replace(tzinfo=pytz.UTC)
 
 
-def utc_millisec():
+def utc_millisec() -> float:
     return int(time.time()*1000)
 
 

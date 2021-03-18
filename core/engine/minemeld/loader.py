@@ -46,7 +46,7 @@ def _conflicts(requirements, installed):
 def _initialize_entry_point_group(entrypoint_group):
     global _WS
 
-    installed = {d.project_name: d for d in working_set}
+    installed = {d.project_name: d for d in working_set}  # pylint: disable=not-an-iterable
 
     if _WS is None:
         _WS = WorkingSet()

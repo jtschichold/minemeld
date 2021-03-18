@@ -74,7 +74,7 @@ class RPCNodeAsyncAnswer(gevent.event.AsyncResult):
 
 
 class Chassis:
-    def __init__(self, chassis_id: int, config: 'MineMeldConfig', chassis_plan: List[List[str]]) -> None:
+    def __init__(self, chassis_id: int, config: MineMeldConfig, chassis_plan: List[List[str]]) -> None:
         self.chassis_id = chassis_id
         self.chassis_pid = os.getpid()
         self.chassis_plan = chassis_plan
@@ -142,7 +142,7 @@ class Chassis:
         )
 
         # create nodes
-        new_fts: Dict[str, 'BaseFT'] = {}
+        new_fts: Dict[str, minemeld.ft.ChassisNode] = {}
         for ftname in self.chassis_plan[self.chassis_id]:
             ftconfig = self.config.nodes[ftname]
             new_fts[ftname] = minemeld.ft.factory(
