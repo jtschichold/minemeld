@@ -35,7 +35,9 @@ gevent.monkey.patch_all(thread=False, select=False)
 
 import zmq.green as zmq
 
-import minemeld.ft
+from minemeld.ft import (
+    ChassisNode, factory as node_factory, ft_states
+)
 from minemeld.config import MineMeldConfig
 from minemeld.comm.rpc import (
     Server as RPCServer,
@@ -63,6 +65,11 @@ class RPCAggregatedAnswer(TypedDict):
 
 
 class RPCNodeAsyncAnswer(gevent.event.AsyncResult):
+    def __init__(self, answer: Optional[Dict[str,Any]] = None, error: Optional[str] = None):
+        super().__init__()
+        if answer is not None or error is not None:
+            self.set(answer=answer, error=error)
+
     def set(self, answer: Optional[Dict[str,Any]] = None, error: Optional[str] = None) -> None:
         super().set(value={
             'answer': answer,
@@ -80,7 +87,7 @@ class Chassis:
         self.chassis_plan = chassis_plan
         self.config = config
 
-        self.fts: Dict[str, minemeld.ft.ChassisNode] = {}
+        self.fts: Dict[str, ChassisNode] = {}
         self.poweroff = gevent.event.AsyncResult()
 
         self.log_channel_queue = gevent.queue.Queue(maxsize=128)
@@ -142,13 +149,14 @@ class Chassis:
         )
 
         # create nodes
-        new_fts: Dict[str, minemeld.ft.ChassisNode] = {}
+        new_fts: Dict[str, ChassisNode] = {}
         for ftname in self.chassis_plan[self.chassis_id]:
             ftconfig = self.config.nodes[ftname]
-            new_fts[ftname] = minemeld.ft.factory(
+            new_fts[ftname] = node_factory(
                 ftconfig['class'],
                 name=ftname,
-                chassis=self
+                chassis=self,
+                num_inputs=len(ftconfig.get('inputs', []))
             )
 
             if len(topic_subscribers[ftname]) != 0:
@@ -169,6 +177,7 @@ class Chassis:
         for ftname in self.chassis_plan[self.chassis_id]:
             new_config = self.config.nodes[ftname].get('config', {})
             self.fts[ftname].configure(new_config)
+            self.fts[ftname].start_dispatch()
 
         self.rpc_reactor.connect()
         self.reactor_glet = gevent.spawn(self._reactor_loop)
@@ -281,7 +290,7 @@ class Chassis:
             assert node == '<chassis>'
             self.start()
             result.set(value='OK')
-            
+
         elif method == 'state_info':
             assert node == '<chassis>'
             gevent.spawn(self.async_nodes_request, result=result, method='state_info', timeout=20.0)
@@ -300,7 +309,7 @@ class Chassis:
 
         elif method == 'configure':
             assert node == '<chassis>'
-            gevent.spawn(self.async_nodes_request, result=result, method='init', args=kwargs)
+            gevent.spawn(self.async_nodes_request, result=result, method='configure', args=kwargs)
 
         elif method == 'signal':
             if node not in self.fts:
@@ -351,7 +360,7 @@ class Chassis:
             
     def fts_init(self) -> bool:
         for ft in self.fts.values():
-            if ft.state < minemeld.ft.ft_states.INIT:
+            if ft.state < ft_states.INIT:
                 return False
         return True
 

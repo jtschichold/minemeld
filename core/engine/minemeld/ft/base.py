@@ -1,23 +1,106 @@
 from typing import (
-    Optional, Dict, Any
+    Optional, Dict, Any, List, TypedDict
 )
+from collections import deque
 
 import gevent
 import gevent.queue
+import gevent.event
 
-from minemeld.chassis import Chassis
+from minemeld.chassis import Chassis, RPCNodeAsyncAnswer
 from minemeld.comm.pubsub import Publisher
+from minemeld.config import TMineMeldNodeConfig
 
 from . import ft_states, ChassisNode
 from .utils import utc_millisec, GThrottled
 
+
+HIGH_PRIORITY_METHODS = [
+    'checkpoint',
+    'init',
+    'configure',
+    'signal'
+]
+
+
+class Message(TypedDict):
+    async_answer: RPCNodeAsyncAnswer
+    method: str
+    args: dict
+
+
+class MultiQueue:
+    def __init__(self, maxsize: List[Optional[int]]):
+        self.queues: List[gevent.queue.Queue] = [gevent.queue.Queue(maxsize=n) for n in maxsize]
+        self.events: List[gevent.event.Event] = [gevent.event.Event() for _ in maxsize]
+        self.start_wait: List[gevent.event.Event] = [gevent.event.Event() for _ in maxsize]
+        self.glets: List[gevent.Greenlet] = []
+        self.waiting: Optional[gevent.Greenlet] = None
+
+    def put(self, p: int, item: Message, block: bool = True, timeout: Optional[float] = None) -> None:
+        assert p < len(self.queues)
+
+        self.queues[p].put(item, block=block, timeout=timeout)
+
+    def get(self, p: int, block: bool = True, timeout: Optional[float] = None) -> Message:
+        assert p < len(self.queues)
+
+        return self.queues[p].get(block=block, timeout=timeout)
+
+    def peek(self, p: int, block: bool = True, timeout: Optional[float] = None) -> Message:
+        assert p < len(self.queues)
+
+        return self.queues[p].peek(block=block, timeout=timeout)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> Message:
+        assert self.waiting is None
+
+        self.waiting = gevent.getcurrent()
+
+        try:
+            for i in range(len(self.queues)):
+                self.start_wait[i].set()
+
+            gevent.wait(self.events, timeout=None)
+            for i in range(len(self.queues)):
+                if self.events[i].is_set():
+                    return self.queues[i].get()
+
+        finally:
+            self.waiting = None
+
+        raise StopIteration
+
+    def _check_loop(self, i: int):
+        while True:
+            self.start_wait[i].wait()
+            self.start_wait[i].clear()
+            self.events[i].clear()
+            self.queues[i].peek()
+            self.events[i].set()
+
+    def start(self):
+        self.glets = [gevent.spawn(self._check_loop) for _ in range(len(self.queues))]
+
+    def stop(self):
+        if self.glets is not None:
+            for g in self.glets:
+                g.kill()
+
+
 class BaseFT:
-    def __init__(self, name: str, chassis: Chassis):
+    def __init__(self, name: str, chassis: Chassis, num_inputs: int):
         self.name = name
         self.chassis = chassis
-        self.state = ft_states.READY
+        self.num_inputs = num_inputs
 
-        self.msg_queue: gevent.queue.PriorityQueue = gevent.queue.PriorityQueue(maxsize=2)
+        self.state = ft_states.READY
+        self.last_checkpoint: Optional[str] = None
+
+        self.msg_queue: MultiQueue = MultiQueue(maxsize=[1, 2048])
         self.dispatcher_glet: Optional[gevent.Greenlet] = None
 
         self._last_status_publish: Optional[float] = None
@@ -32,6 +115,9 @@ class BaseFT:
         self.state = new_state
         self.publish_status(force=True)
 
+    def configure(self, config: TMineMeldNodeConfig) -> None:
+        pass # XXX - TBD
+
     def connect(self, p: Publisher) -> None:
         self.publisher = p
 
@@ -43,33 +129,87 @@ class BaseFT:
 
     def _internal_publish_status(self):
         self._last_status_publish = utc_millisec()
-        status = self.status()
+        status = self.get_status()
         self.chassis.publish_status(
             timestamp=self._last_status_publish,
             nodename=self.name,
             status=status
         )
 
-    def status(self) -> Dict[str, Any]:
+    def get_status(self) -> Dict[str, Any]:
         result = {
             'clock': self._clock,
-            'class': (self.__class__.__module__+'.'+self.__class__.__name__),
             'state': self.state,
             'statistics': self.statistics,
         }
         self._clock += 1
         return result
 
+    def on_state_info(self):
+        return {
+            'checkpoint': self.last_checkpoint,
+            'state': self.state,
+            'is_source': self.num_inputs == 0
+        }
+
+    def on_init(self, next_state: str) -> str:
+        pass  # XXX - TBD
+
+    def on_checkpoint(self, value: str) -> str:
+        pass  # XXX - TBD
+
     def _dispatcher(self):
-        while True:
-            gevent.wait()
+        msg: Message
+        for msg in self.msg_queue:
+            if msg['method'] == 'init':
+                command: Optional[str] = msg.get('args', {}).get('command', None)
+                assert command is not None
+
+                msg['async_answer'].set(answer={self.name: self.on_init(command)})
+                continue
+
+            if msg['method'] == 'checkpoint':
+                value: Optional[str] = msg.get('args', {}).get('command', None)
+                assert value is not None
+
+                msg['async_answer'].set(answer={self.name: self.on_checkpoint(value)})
+
+    def on_msg(self, method: str, **kwargs) -> Optional[RPCNodeAsyncAnswer]:
+        if method == 'state_info':
+            return RPCNodeAsyncAnswer(answer={self.name: self.on_state_info()})
+
+        if method == 'status':
+            return RPCNodeAsyncAnswer(answer={self.name: self.get_status()})
+
+        async_answer = RPCNodeAsyncAnswer()
+        self.msg_queue.put(
+            0 if method in HIGH_PRIORITY_METHODS else 1,
+            item={
+                'async_answer': async_answer,
+                'method': method,
+                'args': kwargs
+            }
+        )
+
+        return async_answer
+
+    def start_dispatch(self) -> None:
+        assert self.dispatcher_glet is None
+
+        self.msg_queue.start()
+        self.dispatcher_glet = gevent.spawn(self._dispatcher)
 
     def start(self) -> None:
         assert self.state == ft_states.INIT
-        self.dispatcher_glet = gevent.spawn(self._dispatcher)
+
         self.set_state(ft_states.STARTED)
 
     def stop(self) -> None:
         assert self.state in [ft_states.STARTED, ft_states.INIT]
+
+        self.msg_queue.stop()
+        if self.dispatcher_glet is not None:
+            self.dispatcher_glet.kill()
+            self.dispatcher_glet = None
 
         self.state = ft_states.STOPPED
