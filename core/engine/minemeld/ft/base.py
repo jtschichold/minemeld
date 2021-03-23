@@ -24,7 +24,7 @@ HIGH_PRIORITY_METHODS = [
 
 
 class Message(TypedDict):
-    async_answer: RPCNodeAsyncAnswer
+    async_answer: Optional[RPCNodeAsyncAnswer]
     method: str
     args: dict
 
@@ -121,6 +121,7 @@ class BaseFT:
     def connect(self, p: Publisher) -> None:
         self.publisher = p
 
+    # status related methods
     def publish_status(self, force=False):
         if force:
             self._internal_publish_status()
@@ -145,6 +146,38 @@ class BaseFT:
         self._clock += 1
         return result
 
+    # publish method
+    def publish_checkpoint(self, value: str) -> None:
+        if self.publisher is None:
+            return
+
+        self.publisher.publish(
+            method='checkpoint',
+            params={
+                'source': self.name,
+                'value': value
+            }
+        )
+
+    # checkpoint methods
+    def create_checkpoint(self, value: str) -> None:
+        pass
+
+    def remove_checkpoint(self) -> None:
+        pass
+
+    # state switch methods, should be implemented
+    # in subclasses
+    def initialize(self) -> None:
+        pass
+
+    def rebuild(self) -> None:
+        pass
+
+    def reset(self) -> None:
+        pass
+
+    # rpc request handler methods
     def on_state_info(self):
         return {
             'checkpoint': self.last_checkpoint,
@@ -153,10 +186,39 @@ class BaseFT:
         }
 
     def on_init(self, next_state: str) -> str:
-        pass  # XXX - TBD
+        assert next_state in ['initialize', 'rebuild', 'reset']
+
+        if next_state == 'rebuild':
+            self.msg_queue.put(0, item={
+                'async_answer': None,
+                'method': 'rebuild',
+                'args': {}
+            })
+        elif next_state == 'reset':
+            self.msg_queue.put(0, item={
+                'async_answer': None,
+                'method': 'reset',
+                'args': {}
+            })
+
+        elif next_state == 'initialize':
+            self.initialize()
+
+        self.set_state(ft_states.INIT)
+        self.remove_checkpoint()
+
+        return 'OK'
 
     def on_checkpoint(self, value: str) -> str:
-        pass  # XXX - TBD
+        if self.num_inputs != 0:
+            return 'ignored'
+
+        self.set_state(ft_states.IDLE)
+        self.create_checkpoint(value)
+        self.last_checkpoint = value
+        self.publish_checkpoint(value)
+
+        return 'OK'
 
     def _dispatcher(self):
         msg: Message
@@ -165,14 +227,35 @@ class BaseFT:
                 command: Optional[str] = msg.get('args', {}).get('command', None)
                 assert command is not None
 
-                msg['async_answer'].set(answer={self.name: self.on_init(command)})
+                result = self.on_init(command)
+
+                if msg['async_answer'] is not None:
+                    msg['async_answer'].set(answer={self.name: result})
                 continue
 
             if msg['method'] == 'checkpoint':
-                value: Optional[str] = msg.get('args', {}).get('command', None)
+                value: Optional[str] = msg.get('args', {}).get('value', None)
                 assert value is not None
 
-                msg['async_answer'].set(answer={self.name: self.on_checkpoint(value)})
+                result = self.on_checkpoint(value)
+
+                if msg['async_answer'] is not None:
+                    msg['async_answer'].set(answer={self.name: result})
+                continue
+
+            if msg['method'] == 'rebuild':
+                msg['async_answer'] is None
+
+                self.rebuild()
+                continue
+
+            if msg['methid'] == 'reset':
+                msg['async_answer'] is None
+
+                self.reset()
+                continue
+
+            # XXX - handle fabric messages
 
     def on_msg(self, method: str, **kwargs) -> Optional[RPCNodeAsyncAnswer]:
         if method == 'state_info':

@@ -220,7 +220,7 @@ class MineMeldConfig(_Config):
                 LOG.warning(f'No validator for {nclass}')
                 continue
             validator = vep.ep.load()
-            vresult = validator(v.get('config', {}))
+            vresult = validator.validate(v.get('config', {}))
             for verror in vresult.get('errors', []):
                 result.append(f'Invalid config for node {n}: {verror}')
 

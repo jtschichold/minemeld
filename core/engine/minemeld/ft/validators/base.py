@@ -9,31 +9,36 @@ from jsonschema import Draft7Validator
 from . import ValidatorResult
 from ..filters import Filters
 
-JSON_SCHEMA = None
-def validator(newconfig: Dict[str, Any], oldconfig: Optional[Dict[str, Any]] = None) -> ValidatorResult:
-    result: ValidatorResult = {}
+class BaseValidator:
+    schema: Optional[Dict[str, Any]] = None
 
-    global JSON_SCHEMA
+    @staticmethod
+    def get_schema() -> Dict[str, Any]:
+        if BaseValidator.schema is None:
+            with open(os.path.join(os.path.dirname(__file__), 'base.schema.json'), 'r') as f:
+                BaseValidator.schema = json.load(f)
 
-    if JSON_SCHEMA is None:
-        with open(os.path.join(os.path.dirname(__file__), 'base.schema.json'), 'r') as f:
-            JSON_SCHEMA = json.load(f)
+        return BaseValidator.schema
 
-    v = Draft7Validator(JSON_SCHEMA)
-    result['errors'] = [str(e) for e in v.iter_errors(newconfig)]
+    @staticmethod
+    def validate(newconfig: Dict[str, Any], oldconfig: Optional[Dict[str, Any]] = None) -> ValidatorResult:
+        result: ValidatorResult = {}
 
-    for k, v in newconfig.items():
-        if k in ['infilters', 'outfilters']:
-            try:
-                Filters(v)
-            except Exception as e:
-                result['errors'].append(f'{k}: {str(e)}')
+        v = Draft7Validator(BaseValidator.get_schema())
+        result['errors'] = [str(e) for e in v.iter_errors(newconfig)]
 
-    if len(result['errors']) != 0 or oldconfig is None:
+        for k, v in newconfig.items():
+            if k in ['infilters', 'outfilters']:
+                try:
+                    Filters(v)
+                except Exception as e:
+                    result['errors'].append(f'{k}: {str(e)}')
+
+        if len(result['errors']) != 0 or oldconfig is None:
+            return result
+
+        result['requires_reinit'] = False
+        for k in ['infilters', 'outfilters']:
+            result['requires_reinit'] = result['requires_reinit'] or newconfig.get(k, None) != oldconfig.get(k, None)
+
         return result
-
-    result['requires_reinit'] = False
-    for k in ['infilters', 'outfilters']:
-        result['requires_reinit'] = result['requires_reinit'] or newconfig.get(k, None) != oldconfig.get(k, None)
-
-    return result
