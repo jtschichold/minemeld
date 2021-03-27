@@ -2,12 +2,13 @@ from typing import (
     Optional, Dict, Any, List, TypedDict
 )
 from collections import deque
+import logging
 
 import gevent
 import gevent.queue
 import gevent.event
 
-from minemeld.chassis import Chassis, RPCNodeAsyncAnswer
+from minemeld.chassis import Chassis
 from minemeld.comm.pubsub import Publisher
 from minemeld.config import TMineMeldNodeConfig
 
@@ -22,9 +23,11 @@ HIGH_PRIORITY_METHODS = [
     'signal'
 ]
 
+LOG = logging.getLogger(__name__)
+
 
 class Message(TypedDict):
-    async_answer: Optional[RPCNodeAsyncAnswer]
+    async_answer: Optional[gevent.event.AsyncResult]
     method: str
     args: dict
 
@@ -62,11 +65,15 @@ class MultiQueue:
 
         try:
             for i in range(len(self.queues)):
+                self.events[i].clear()
                 self.start_wait[i].set()
 
-            gevent.wait(self.events, timeout=None)
+            LOG.debug(f'MQ: Waiting')
+            gevent.wait(objects=self.events, timeout=None, count=1)
+            LOG.debug(f'MQ: Waiting done')
             for i in range(len(self.queues)):
                 if self.events[i].is_set():
+                    LOG.debug(f'MQ: Returning from {i}')
                     return self.queues[i].get()
 
         finally:
@@ -78,12 +85,13 @@ class MultiQueue:
         while True:
             self.start_wait[i].wait()
             self.start_wait[i].clear()
-            self.events[i].clear()
+            LOG.debug(f'MQ:{i} wait')
             self.queues[i].peek()
             self.events[i].set()
+            LOG.debug(f'MQ:{i} set')
 
     def start(self):
-        self.glets = [gevent.spawn(self._check_loop) for _ in range(len(self.queues))]
+        self.glets = [gevent.spawn(self._check_loop, i) for i in range(len(self.queues))]
 
     def stop(self):
         if self.glets is not None:
@@ -189,13 +197,13 @@ class BaseFT:
         assert next_state in ['initialize', 'rebuild', 'reset']
 
         if next_state == 'rebuild':
-            self.msg_queue.put(0, item={
+            self.msg_queue.put(1, item={
                 'async_answer': None,
                 'method': 'rebuild',
                 'args': {}
             })
         elif next_state == 'reset':
-            self.msg_queue.put(0, item={
+            self.msg_queue.put(1, item={
                 'async_answer': None,
                 'method': 'reset',
                 'args': {}
@@ -223,16 +231,7 @@ class BaseFT:
     def _dispatcher(self):
         msg: Message
         for msg in self.msg_queue:
-            if msg['method'] == 'init':
-                command: Optional[str] = msg.get('args', {}).get('command', None)
-                assert command is not None
-
-                result = self.on_init(command)
-
-                if msg['async_answer'] is not None:
-                    msg['async_answer'].set(answer={self.name: result})
-                continue
-
+            LOG.debug(f'{self.name} - dispatch {msg}')
             if msg['method'] == 'checkpoint':
                 value: Optional[str] = msg.get('args', {}).get('value', None)
                 assert value is not None
@@ -244,27 +243,37 @@ class BaseFT:
                 continue
 
             if msg['method'] == 'rebuild':
-                msg['async_answer'] is None
+                assert msg['async_answer'] is None
 
                 self.rebuild()
                 continue
 
-            if msg['methid'] == 'reset':
-                msg['async_answer'] is None
+            if msg['method'] == 'reset':
+                assert msg['async_answer'] is None
 
                 self.reset()
                 continue
 
             # XXX - handle fabric messages
 
-    def on_msg(self, method: str, **kwargs) -> Optional[RPCNodeAsyncAnswer]:
+    def on_msg(self, method: str, **kwargs) -> Optional[gevent.event.AsyncResult]:
+        LOG.debug(f'{self.name} - recv {method}')
+        async_answer = gevent.event.AsyncResult()
         if method == 'state_info':
-            return RPCNodeAsyncAnswer(answer={self.name: self.on_state_info()})
+            async_answer.set(value=self.on_state_info())
+            return async_answer
 
         if method == 'status':
-            return RPCNodeAsyncAnswer(answer={self.name: self.get_status()})
+            async_answer.set(value=self.get_status())
+            return async_answer
 
-        async_answer = RPCNodeAsyncAnswer()
+        if method == 'init':
+            command: Optional[str] = kwargs.get('command', None)
+            assert command is not None
+
+            async_answer.set(value=self.on_init(command))
+            return async_answer
+
         self.msg_queue.put(
             0 if method in HIGH_PRIORITY_METHODS else 1,
             item={
@@ -273,11 +282,14 @@ class BaseFT:
                 'args': kwargs
             }
         )
+        LOG.debug(f'{self.name} - queued')
 
         return async_answer
 
     def start_dispatch(self) -> None:
         assert self.dispatcher_glet is None
+
+        LOG.debug(f'{self.name} - Starting dispatch')
 
         self.msg_queue.start()
         self.dispatcher_glet = gevent.spawn(self._dispatcher)

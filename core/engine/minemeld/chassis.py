@@ -117,7 +117,7 @@ class Chassis:
         topic_subscribers: Dict[str,List[str]] = defaultdict(list)
 
         for nodename in sorted(self.config.nodes.keys()):
-            nodevalue = self.config[nodename]
+            nodevalue = self.config.nodes[nodename]
             inputs: List[str] = nodevalue.get('inputs')
             for i in inputs:
                 topic_subscribers[i].append(nodename)
@@ -184,9 +184,13 @@ class Chassis:
         self.reactor_glet.link(self.on_reactor_glet_exit)
 
         # chassis_ready
+        LOG.info(f'Chassis:{self.chassis_id} ready')
         self.rpc_client.send_rpc(
             remote='orchestrator',
             method='chassis_ready',
+            params={
+                'chassis_id': self.chassis_id
+            },
             ignore_answer=True
         )
 
@@ -225,7 +229,8 @@ class Chassis:
                 self.rpc_client.send_rpc(
                     remote='orchestrator',
                     method='status',
-                    params=params
+                    params=params,
+                    ignore_answer=True
                 )
 
             except gevent.GreenletExit:
@@ -245,7 +250,7 @@ class Chassis:
         if args is None:
             args = {}
 
-        aresults: List[RPCNodeAsyncAnswer] = []
+        aresults: Dict[str, gevent.event.AsyncResult] = {}
         for nodename, nodeinstance in self.fts.items():
             nodeargs = args.get(nodename, {})
             nodeanswer = nodeinstance.on_msg(
@@ -253,43 +258,44 @@ class Chassis:
                 **nodeargs
             )
             assert nodeanswer is not None
-            aresults.append(nodeanswer)
+            aresults[nodename] = nodeanswer
         
         try:
-            gevent.wait(aresults, timeout=timeout)
+            LOG.debug(f'Chassis:{self.chassis_id} - waiting for {len(aresults)} answers to {method} for {timeout}')
+            gevent.wait(aresults.values(), timeout=timeout)
 
         except gevent.greenlet.GreenletExit:
             return
 
         except gevent.Timeout:
             result.set(error='Timeout in request')
+            return
 
-        aggregated_results: RPCAggregatedAnswer = {
-            'answer': {},
-            'error': None
-        }
-        for ar in aresults:
+        LOG.debug(f'Chassis:{self.chassis_id} - waiting for {len(aresults)} answers to {method} done')
+
+        aggregated_results: Dict[str, Any] = {}
+        for nodename, aranswer in aresults.items():
             try:
-                node_result = ar.get()
-                if node_result.get('error', None) is not None:
-                    result.set(error=node_result.get('error'))
-                    return
+                node_result = aranswer.get()
 
-                aggregated_results.update(cast(Any, node_result))  # XXX - mypy error
+                aggregated_results[nodename] = node_result
 
             except Exception as e:
                 result.set(error=str(e))
                 return
 
-        result.set(answer=aggregated_results['answer'], error=aggregated_results['error'])
+        LOG.debug(f'Chassis:{self.chassis_id} - setting {result}')
+        result.set(answer=aggregated_results)
 
     def on_rpc_request(self, method: str, node: str, **kwargs) -> gevent.event.AsyncResult:
-        result = gevent.event.AsyncResult()
+        result = RPCNodeAsyncAnswer()
+
+        LOG.debug(f'Chassis:{self.chassis_id} recvd {method}')
 
         if method == 'start':
             assert node == '<chassis>'
             self.start()
-            result.set(value='OK')
+            result.set(answer={'<chassis>': 'OK'})
 
         elif method == 'state_info':
             assert node == '<chassis>'
@@ -317,6 +323,7 @@ class Chassis:
             return self.fts[node].on_msg(method='signal', **kwargs)
 
         else:
+            LOG.error(f'Chassis:{self.chassis_id} - RPC request received for unknown method: {method}')
             result.set_exception(
                 RuntimeError(f'Chassis:{self.chassis_id} - RPC call for unknown method {method}')
             )
@@ -335,29 +342,46 @@ class Chassis:
             self.stop()
 
     def _reactor_loop(self):
-        while not self.pubsub_dispatch.is_set():
-            dispatchers = self.rpc_reactor.select(0.5)
-            for d in dispatchers:
-                d.run()
-        
         if self.reactor_polling_glet is None:
             self.reactor_polling_glet = gevent.spawn(self.rpc_reactor.select)
 
         while True:
             ars = self.rpc_reactor.get_async_results()
-            ars.extend(self.reactor_polling_glet)
-            gevent.wait(ars, timeout=self.pubsub_reactor.wait_interval())
+            ars.append(self.reactor_polling_glet)
+
+            self.rpc_reactor.new_async_result.clear()
+            ars.append(self.rpc_reactor.new_async_result)
+
+            if not self.pubsub_dispatch.is_set():
+                ars.append(self.pubsub_dispatch)
+
+            timeout = self.pubsub_reactor.wait_interval() if self.pubsub_dispatch.is_set() else None
+            LOG.debug(f'Chassis:{self.chassis_id} - waiting on {ars}')
+            LOG.debug(f'Chassis:{self.chassis_id} - waiting for {timeout} secs')
+
+            try:
+                gevent.wait(ars, timeout=timeout, count=1)
+
+            except gevent.Timeout:
+                pass
+
+            LOG.debug(f'Chassis:{self.chassis_id} - waiting done')
 
             # first RPCs
+            LOG.debug(f'Chassis:{self.chassis_id} - dispatching async results')
             self.rpc_reactor.dispatch_async_results()
+            LOG.debug(f'Chassis:{self.chassis_id} - running RPC dispatchers')
             if self.reactor_polling_glet.ready():
                 dispatchers: List[RPCDispatcher] = self.reactor_polling_glet.get()
                 for d in dispatchers:
-                    d.run()
+                    while d.run():
+                        pass
                 self.reactor_polling_glet = gevent.spawn(self.rpc_reactor.select)
 
-            self.pubsub_reactor.dispatch()
-            
+            if self.pubsub_dispatch.is_set():
+                LOG.debug(f'Chassis:{self.chassis_id} - running PubSub dispatch')
+                self.pubsub_reactor.dispatch()
+
     def fts_init(self) -> bool:
         for ft in self.fts.values():
             if ft.state < ft_states.INIT:

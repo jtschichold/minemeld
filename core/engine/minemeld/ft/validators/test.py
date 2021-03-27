@@ -16,5 +16,5 @@ class MinerValidator:
         return BaseValidator.get_schema()
 
     @staticmethod
-    def validate(self, newconfig: Dict[str, Any], oldconfig: Optional[Dict[str, Any]] = None) -> ValidatorResult:
+    def validate(newconfig: Dict[str, Any], oldconfig: Optional[Dict[str, Any]] = None) -> ValidatorResult:
         return BaseValidator.validate(newconfig, oldconfig)

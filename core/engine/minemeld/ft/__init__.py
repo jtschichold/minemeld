@@ -1,18 +1,22 @@
-from typing import Protocol, Optional
+from typing import Protocol, Optional, TYPE_CHECKING
 
-from minemeld.chassis import RPCNodeAsyncAnswer
+import gevent.event
+
 from minemeld.loader import load, MM_NODES_ENTRYPOINT
 from minemeld.comm.pubsub import Publisher
 from minemeld.config import TMineMeldNodeConfig
-from minemeld.chassis import Chassis
+
+if TYPE_CHECKING:
+    from minemeld.chassis import Chassis
 
 
-def factory(classname: str, name: str, chassis: Chassis, num_inputs: int):
+def factory(classname: str, name: str, chassis: 'Chassis', num_inputs: int):
     node_class = load(MM_NODES_ENTRYPOINT, classname)
 
     return node_class(
         name=name,
-        chassis=chassis
+        chassis=chassis,
+        num_inputs=num_inputs
     )
 
 
@@ -30,7 +34,7 @@ class ft_states:
 
 class ChassisNode(Protocol):
     state: int
-    def __init__(self, name: str, chassis: Chassis, num_inputs: int):
+    def __init__(self, name: str, chassis: 'Chassis', num_inputs: int):
         ...
 
     def configure(self, config: TMineMeldNodeConfig) -> None:
@@ -48,5 +52,5 @@ class ChassisNode(Protocol):
     def stop(self) -> None:
         ...
 
-    def on_msg(self, method: str, **kwargs) -> Optional[RPCNodeAsyncAnswer]:
+    def on_msg(self, method: str, **kwargs) -> Optional[gevent.event.AsyncResult]:
         ...

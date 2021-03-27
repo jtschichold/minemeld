@@ -100,6 +100,7 @@ class Orchestrator:
             )
 
         else:
+            LOG.error(f'Orchestrator - RPC request with unknown method {method}')
             result.set_exception(
                 RuntimeError(f'Orchestrator - RPC call for unknown method {method}')
             )
@@ -185,8 +186,9 @@ class Orchestrator:
         for ar in async_results:
             assert ar is not None
             ans = ar.get()
-            if 'error' in ans:
-                raise OrchestratorCmdError(f'Error in state_info: {ar["error"]}')
+            LOG.debug(f'Answer: {ans}')
+            if ans.get('error', None) is not None:
+                raise OrchestratorCmdError(f'Error in state_info: {ans["error"]}')
 
             result.update(ans['answer'])
 
@@ -212,8 +214,8 @@ class Orchestrator:
         for ar in async_results:
             assert ar is not None
             ans = ar.get()
-            if 'error' in ans:
-                raise OrchestratorCmdError(f'Error in status: {ar["error"]}')
+            if ans.get('error', None) is not None:
+                raise OrchestratorCmdError(f'Error in status: {ans["error"]}')
 
             result.update(ans['answer'])
 
@@ -248,14 +250,18 @@ class Orchestrator:
             remote = self.routing_table[node]
             plans_per_chassis[remote][node] = dict(command=command)
 
+        async_results: List[gevent.event.AsyncResult] = [] 
         for remote, chassis_plan in plans_per_chassis.items():
-            self.rpc_async_client.send_rpc(
+            ar = self.rpc_async_client.send_rpc(
                 remote=remote,
                 method='init_nodes',
                 params=chassis_plan,
-                node='<chassis>',
-                ignore_answer=True
+                node='<chassis>'
             )
+            assert ar is not None
+            async_results.append(ar)
+        gevent.wait(async_results, timeout=60.0)
+        LOG.debug(f'Orchestrator: init_nodes results: {[ar.get() for ar in async_results]}')
 
         self.graph_status = 'INIT'
 
@@ -314,6 +320,7 @@ class Orchestrator:
                 LOG.info('checkpoint graph - all good')
                 break
 
+            LOG.debug('Orchestrator - checkpoint did not happen yet, waiting')
             gevent.sleep(2)
             ntries += 1
 
@@ -386,8 +393,8 @@ class Orchestrator:
                 })
             )
 
-        except:
-            LOG.exception('Error publishing status')
+        except Exception as e:
+            LOG.error(f'Error publishing status: {str(e)}')
 
     def _status_loop(self) -> None:
         """Greenlet that periodically retrieves metrics from nodes and sends
@@ -425,8 +432,8 @@ class Orchestrator:
                     result
                 )
 
-            except Exception:
-                LOG.exception('Exception in _status_loop')
+            except Exception as e:
+                LOG.error(f'Exception in _status_loop: {str(e)}')
 
             gevent.sleep(loop_interval)
 
@@ -452,18 +459,34 @@ class Orchestrator:
             self.rpc_polling_glet = gevent.spawn(self.rpc_reactor.select)
 
         while True:
+            LOG.debug(f'Orchestrator getting async results')
             ars = self.rpc_reactor.get_async_results()
-            ars.extend(self.rpc_polling_glet)
-            gevent.wait(ars, timeout=None)
+            ars.append(self.rpc_polling_glet)
+
+            self.rpc_reactor.new_async_result.clear()
+            ars.append(self.rpc_reactor.new_async_result)
+
+            LOG.debug(f'Orchestrator waiting')
+            try:
+                gevent.wait(ars, timeout=None, count=1)
+
+            except gevent.Timeout:
+                pass
+
+            LOG.debug(f'Orchestrator waiting done')
 
             self.rpc_reactor.dispatch_async_results()
+            LOG.debug(f'Orchestrator dispatching async results done')
 
             if not self.rpc_polling_glet.ready():
                 continue
 
+            LOG.debug(f'Orchestrator - RPC polling ready')
             dispatchers: List[RPCDispatcher] = self.rpc_polling_glet.get()
+            LOG.debug(f'Orchestrator - running RPC dispatchers')
             for d in dispatchers:
-                d.run()
+                while d.run():
+                    pass
             self.rpc_polling_glet = gevent.spawn(self.rpc_reactor.select)
 
     def on_rpc_reactor_glet_exit(self, g: gevent.Greenlet) -> None:

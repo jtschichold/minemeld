@@ -307,6 +307,7 @@ def main() -> int:
         # dispatching and fabric not dispatching
         orchestrator.start_status_monitor()
         orchestrator.init_graph(config)
+        LOG.info('Graph init done')
         # here nodes are all INIT
         orchestrator.start_chassis()
         # here nodes should all be starting

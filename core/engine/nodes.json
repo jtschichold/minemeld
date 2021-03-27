@@ -1,5 +1,5 @@
 {
-    "minemeld.ft.test.RandomMiner": {
+    "minemeld.ft.test.Miner": {
         "class": "minemeld.ft.test:Miner",
         "validator": "minemeld.ft.validators.test:MinerValidator"
     }

@@ -38,3 +38,4 @@ passlib==1.7.4
 supervisor==4.2.1
 blinker==1.4
 jsonschema==3.2.0
+msgpack==1.0.2
