@@ -549,7 +549,7 @@ def request(context: zmq.Context, path: str, dest: str, method: str, params: Opt
             block: bool = True, timeout: Optional[int] = None) -> Optional[RPCResponse]:
     _id = str(uuid.uuid1())
     body: RPCRequest = {
-        'reply_to': None,
+        'reply_to': '<sync>',
         'node': None,
         'method': method,
         '_id': _id,
