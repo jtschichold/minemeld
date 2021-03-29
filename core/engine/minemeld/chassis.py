@@ -290,7 +290,7 @@ class Chassis:
     def on_rpc_request(self, method: str, node: str, **kwargs) -> gevent.event.AsyncResult:
         result = RPCNodeAsyncAnswer()
 
-        LOG.debug(f'Chassis:{self.chassis_id} recvd {method}')
+        LOG.debug(f'Chassis:{self.chassis_id} recvd {node}/{method}/{kwargs}')
 
         if method == 'start':
             assert node == '<chassis>'
@@ -307,7 +307,8 @@ class Chassis:
 
         elif method == 'checkpoint_nodes':
             assert node == '<chassis>'
-            gevent.spawn(self.async_nodes_request, result=result, method='checkpoint', timeout=40.0, args=kwargs)
+            args = {nodename: kwargs for nodename in self.chassis_plan[self.chassis_id]}
+            gevent.spawn(self.async_nodes_request, result=result, method='checkpoint', timeout=40.0, args=args)
 
         elif method == 'init_nodes':
             assert node == '<chassis>'

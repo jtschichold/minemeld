@@ -294,7 +294,7 @@ class Server:
 
     def handle_request(self, node: str, method: str, params: RPCRequestParams, _id: str, req_reply_to: bytes, reply_to: Optional[str]):
         try:
-            LOG.debug(f'handler: {self.handler}')
+            LOG.debug(f'RPC Server {self.name} - handling message: {node}/{method}/{params}')
             result = self.handler(node=node, method=method, **params)
 
         except gevent.GreenletExit:

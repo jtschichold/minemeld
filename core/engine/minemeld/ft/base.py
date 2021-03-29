@@ -239,7 +239,7 @@ class BaseFT:
                 result = self.on_checkpoint(value)
 
                 if msg['async_answer'] is not None:
-                    msg['async_answer'].set(answer={self.name: result})
+                    msg['async_answer'].set(value=result)
                 continue
 
             if msg['method'] == 'rebuild':
@@ -257,7 +257,7 @@ class BaseFT:
             # XXX - handle fabric messages
 
     def on_msg(self, method: str, **kwargs) -> Optional[gevent.event.AsyncResult]:
-        LOG.debug(f'{self.name} - recv {method}')
+        LOG.debug(f'{self.name} - recv {method} args: {kwargs}')
         async_answer = gevent.event.AsyncResult()
         if method == 'state_info':
             async_answer.set(value=self.on_state_info())
@@ -300,7 +300,7 @@ class BaseFT:
         self.set_state(ft_states.STARTED)
 
     def stop(self) -> None:
-        assert self.state in [ft_states.STARTED, ft_states.INIT]
+        assert self.state in [ft_states.STARTED, ft_states.IDLE]
 
         self.msg_queue.stop()
         if self.dispatcher_glet is not None:
