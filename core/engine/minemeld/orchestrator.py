@@ -164,7 +164,9 @@ class Orchestrator:
             )
             for cn in range(len(self.chassis_plan))
         ]
-        gevent.wait(async_results, timeout=60.0)
+        wresult = gevent.wait(async_results, timeout=60.0)
+        if len(wresult) != len(async_results):
+            raise gevent.Timeout()
 
     def get_state_info(self, timeout: float = 60.0) -> Dict[str, dict]:
         async_results = [
@@ -177,7 +179,9 @@ class Orchestrator:
         ]
 
         try:
-            gevent.wait(async_results, timeout=timeout)
+            wresult = gevent.wait(async_results, timeout=timeout)
+            if len(wresult) != len(async_results):
+                raise OrchestratorCmdTimeout()
 
         except gevent.Timeout:
             raise OrchestratorCmdTimeout()
@@ -185,7 +189,7 @@ class Orchestrator:
         result: Dict[str, dict] = {}
         for ar in async_results:
             assert ar is not None
-            ans = ar.get()
+            ans = ar.get(block=False)
             LOG.debug(f'Answer: {ans}')
             if ans.get('error', None) is not None:
                 raise OrchestratorCmdError(f'Error in state_info: {ans["error"]}')
@@ -205,7 +209,9 @@ class Orchestrator:
         ]
 
         try:
-            gevent.wait(async_results, timeout=timeout)
+            wresult = gevent.wait(async_results, timeout=timeout)
+            if len(wresult) != len(async_results):
+                raise OrchestratorCmdTimeout()
 
         except gevent.Timeout:
             raise OrchestratorCmdTimeout()
@@ -213,7 +219,7 @@ class Orchestrator:
         result: Dict[str, dict] = {}
         for ar in async_results:
             assert ar is not None
-            ans = ar.get()
+            ans = ar.get(block=False)
             if ans.get('error', None) is not None:
                 raise OrchestratorCmdError(f'Error in status: {ans["error"]}')
 
@@ -260,7 +266,10 @@ class Orchestrator:
             )
             assert ar is not None
             async_results.append(ar)
-        gevent.wait(async_results, timeout=60.0)
+        wresult = gevent.wait(async_results, timeout=60.0)
+        if len(wresult) != len(async_results):
+            raise gevent.Timeout()
+
         LOG.debug(f'Orchestrator: init_nodes results: {[ar.get() for ar in async_results]}')
 
         self.graph_status = 'INIT'

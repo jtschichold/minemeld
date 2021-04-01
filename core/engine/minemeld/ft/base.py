@@ -1,7 +1,7 @@
 from typing import (
     Optional, Dict, Any, List, TypedDict
 )
-from collections import deque
+from collections import deque, defaultdict
 import logging
 
 import gevent
@@ -28,6 +28,7 @@ LOG = logging.getLogger(__name__)
 
 class Message(TypedDict):
     async_answer: Optional[gevent.event.AsyncResult]
+    source: Optional[str]
     method: str
     args: dict
 
@@ -108,6 +109,8 @@ class BaseFT:
         self.state = ft_states.READY
         self.last_checkpoint: Optional[str] = None
 
+        self.input_checkpoints: Dict[str, str] = {}
+
         self.msg_queue: MultiQueue = MultiQueue(maxsize=[1, 2048])
         self.dispatcher_glet: Optional[gevent.Greenlet] = None
 
@@ -115,16 +118,26 @@ class BaseFT:
         self._throttled_publish_status = GThrottled(self._internal_publish_status, 3000)
         self._clock = 0
 
-        self.statistics: Dict[str, int] = {}
+        self.statistics: Dict[str, int] = defaultdict(int)
 
         self.publisher: Optional[Publisher] = None
 
+        self.load_checkpoint()
+
     def set_state(self, new_state: int) -> None:
+        LOG.info(f'{self.name} - state change {self.state} -> {new_state}')
         self.state = new_state
         self.publish_status(force=True)
 
     def configure(self, config: TMineMeldNodeConfig) -> None:
-        pass # XXX - TBD
+        if self.should_reset(config):
+            # we should be receiving a resetting config
+            # at startup
+            assert self.state == ft_states.READY
+            self.last_checkpoint = None
+            self.reset_checkpoint()
+
+        pass
 
     def connect(self, p: Publisher) -> None:
         self.publisher = p
@@ -156,6 +169,8 @@ class BaseFT:
 
     # publish method
     def publish_checkpoint(self, value: str) -> None:
+        LOG.debug(f'{self.name} - publish checkpoint {value}')
+        self.statistics['checkpoint.tx'] += 1
         if self.publisher is None:
             return
 
@@ -167,7 +182,44 @@ class BaseFT:
             }
         )
 
-    # checkpoint methods
+    def publish_update(self, indicator: str, value: Dict[str, Any]) -> None:
+        self.statistics['update.tx'] += 1
+        if self.publisher is None:
+            return
+
+        self.publisher.publish(
+            method='update',
+            params={
+                'source': self.name,
+                'indicator': indicator,
+                'value': value
+            }
+        )
+
+    def publish_withdraw(self, indicator: str, value: Dict[str, Any]) -> None:
+        self.statistics['withdraw.tx'] += 1
+        if self.publisher is None:
+            return
+
+        self.publisher.publish(
+            method='withdraw',
+            params={
+                'source': self.name,
+                'indicator': indicator,
+                'value': value
+            }
+        )
+
+    # should reset checkpoint
+    def should_reset(self, config: TMineMeldNodeConfig) -> bool:
+        return True
+
+    def load_checkpoint(self) -> None:
+        pass
+
+    def reset_checkpoint(self) -> None:
+        pass
+
     def create_checkpoint(self, value: str) -> None:
         pass
 
@@ -198,12 +250,14 @@ class BaseFT:
 
         if next_state == 'rebuild':
             self.msg_queue.put(1, item={
+                'source': None,
                 'async_answer': None,
                 'method': 'rebuild',
                 'args': {}
             })
         elif next_state == 'reset':
             self.msg_queue.put(1, item={
+                'source': None,
                 'async_answer': None,
                 'method': 'reset',
                 'args': {}
@@ -217,9 +271,20 @@ class BaseFT:
 
         return 'OK'
 
-    def on_checkpoint(self, value: str) -> str:
+    def on_checkpoint(self, source: Optional[str], value: str) -> str:
+        assert self.state in [ft_states.CHECKPOINT, ft_states.STARTED]
+
+        LOG.debug(f'{self.name} - on_checkpoint: {source} {value}')
         if self.num_inputs != 0:
-            return 'ignored'
+            assert next((ev for ev in self.input_checkpoints.values() if ev != value), None) is None
+            if source is None:
+                # rpc checkpoint, ignore
+                return 'ignored'
+
+            self.input_checkpoints[source] = value
+            if len(self.input_checkpoints) != self.num_inputs:
+                self.set_state(ft_states.CHECKPOINT)
+                return 'in progress'
 
         self.set_state(ft_states.IDLE)
         self.create_checkpoint(value)
@@ -228,35 +293,39 @@ class BaseFT:
 
         return 'OK'
 
+    def receive(self, msg: Message) -> bool:
+        LOG.debug(f'{self.name} - dispatch {msg}')
+        if msg['method'] == 'checkpoint':
+            value: Optional[str] = msg.get('args', {}).get('value', None)
+            assert value is not None
+
+            result = self.on_checkpoint(msg['source'], value)
+
+            if msg['async_answer'] is not None:
+                msg['async_answer'].set(value=result)
+            return True
+
+        if msg['method'] == 'rebuild':
+            assert msg['async_answer'] is None
+
+            self.rebuild()
+            return True
+
+        if msg['method'] == 'reset':
+            assert msg['async_answer'] is None
+
+            self.reset()
+            return True
+
+        return False
+
     def _dispatcher(self):
         msg: Message
         for msg in self.msg_queue:
-            LOG.debug(f'{self.name} - dispatch {msg}')
-            if msg['method'] == 'checkpoint':
-                value: Optional[str] = msg.get('args', {}).get('value', None)
-                assert value is not None
+            if not self.receive(msg):
+                LOG.error(f'{self.name} - Unhandled message {msg}')
 
-                result = self.on_checkpoint(value)
-
-                if msg['async_answer'] is not None:
-                    msg['async_answer'].set(value=result)
-                continue
-
-            if msg['method'] == 'rebuild':
-                assert msg['async_answer'] is None
-
-                self.rebuild()
-                continue
-
-            if msg['method'] == 'reset':
-                assert msg['async_answer'] is None
-
-                self.reset()
-                continue
-
-            # XXX - handle fabric messages
-
-    def on_msg(self, method: str, **kwargs) -> Optional[gevent.event.AsyncResult]:
+    def on_reactor_msg(self, method: str, source: Optional[str] = None, **kwargs) -> Optional[gevent.event.AsyncResult]:
         LOG.debug(f'{self.name} - recv {method} args: {kwargs}')
         async_answer = gevent.event.AsyncResult()
         if method == 'state_info':
@@ -277,6 +346,7 @@ class BaseFT:
         self.msg_queue.put(
             0 if method in HIGH_PRIORITY_METHODS else 1,
             item={
+                'source': source,
                 'async_answer': async_answer,
                 'method': method,
                 'args': kwargs

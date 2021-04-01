@@ -57,6 +57,7 @@ from minemeld.defaults import DEFAULT_MINEMELD_COMM_PATH
 
 
 LOG = logging.getLogger(__name__)
+# LOG.setLevel(level=logging.DEBUG)
 
 
 class RPCAggregatedAnswer(TypedDict):
@@ -132,7 +133,7 @@ class Chassis:
         # create pubsub the reactor
         self.pubsub_reactor = PubSubReactor(
             path=os.environ.get('MINEMELD_COMM_PATH', DEFAULT_MINEMELD_COMM_PATH),
-            topics=pubsub_topics
+            topics=list(pubsub_topics.items())
         )
 
         # rpc
@@ -167,9 +168,9 @@ class Chassis:
 
             for i in ftconfig.get('inputs', []):
                 self.pubsub_subscribers.append(self.pubsub_reactor.new_subscriber(
-                    subscriber_number=topic_subscribers[i].index(i),
+                    subscriber_number=topic_subscribers[i].index(ftname),
                     topic=i,
-                    handler=new_fts[ftname].on_message
+                    handler=new_fts[ftname].on_reactor_msg
                 ))
 
         # configure nodes
@@ -253,7 +254,7 @@ class Chassis:
         aresults: Dict[str, gevent.event.AsyncResult] = {}
         for nodename, nodeinstance in self.fts.items():
             nodeargs = args.get(nodename, {})
-            nodeanswer = nodeinstance.on_msg(
+            nodeanswer = nodeinstance.on_reactor_msg(
                 method=method,
                 **nodeargs
             )
@@ -262,7 +263,9 @@ class Chassis:
         
         try:
             LOG.debug(f'Chassis:{self.chassis_id} - waiting for {len(aresults)} answers to {method} for {timeout}')
-            gevent.wait(aresults.values(), timeout=timeout)
+            wresult = gevent.wait(aresults.values(), timeout=timeout)
+            if len(wresult) != len(aresults):
+                raise gevent.Timeout()
 
         except gevent.greenlet.GreenletExit:
             return
@@ -321,7 +324,7 @@ class Chassis:
         elif method == 'signal':
             if node not in self.fts:
                 result.set_exception(f'chassis:{self.chassis_id} - Unknown node: {node}')
-            return self.fts[node].on_msg(method='signal', **kwargs)
+            return self.fts[node].on_reactor_msg(method='signal', **kwargs)
 
         else:
             LOG.error(f'Chassis:{self.chassis_id} - RPC request received for unknown method: {method}')
@@ -361,12 +364,14 @@ class Chassis:
             LOG.debug(f'Chassis:{self.chassis_id} - waiting for {timeout} secs')
 
             try:
-                gevent.wait(ars, timeout=timeout, count=1)
+                wresult = gevent.wait(ars, timeout=timeout, count=1)
+                if len(wresult) == 0:
+                    raise gevent.Timeout()
 
             except gevent.Timeout:
                 pass
 
-            LOG.debug(f'Chassis:{self.chassis_id} - waiting done')
+            LOG.debug(f'Chassis:{self.chassis_id} - waiting done: {wresult}')
 
             # first RPCs
             LOG.debug(f'Chassis:{self.chassis_id} - dispatching async results')
@@ -423,6 +428,7 @@ class Chassis:
 
     def start(self) -> None:
         LOG.info("chassis start called")
+        assert self.pubsub_reactor is not None
 
         self.log_glet = gevent.spawn(self._log_actor)
         self.status_glet = gevent.spawn(self._status_actor)
@@ -431,4 +437,5 @@ class Chassis:
             LOG.debug("starting %s", ftname)
             ft.start()
 
+        self.pubsub_reactor.connect()
         self.pubsub_dispatch.set()

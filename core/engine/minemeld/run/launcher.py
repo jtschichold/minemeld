@@ -303,6 +303,7 @@ def main() -> int:
         )
         orchestrator.start()
         orchestrator.wait_for_chassis(timeout=10)
+        LOG.info('All chassis ready')
         # here nodes are all CONNECTED, fabric and mgmtbus up, with mgmtbus
         # dispatching and fabric not dispatching
         orchestrator.start_status_monitor()

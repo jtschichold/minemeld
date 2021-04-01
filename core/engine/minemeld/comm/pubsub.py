@@ -7,7 +7,8 @@ import random
 from itertools import chain
 from typing import (
     Optional, Any, Dict, Union, List, Callable,
-    Tuple, TYPE_CHECKING, cast, Sequence, Protocol
+    Tuple, TYPE_CHECKING, cast, Sequence, Protocol,
+    Mapping
 )
 from collections import defaultdict, deque
 from multiprocessing.shared_memory import SharedMemory
@@ -38,6 +39,14 @@ class CircularBuffer:
 
     def create(self) -> None:
         assert self.shm is None
+
+        try:
+            temp_shm = SharedMemory(name=self.name, create=False)
+            temp_shm.unlink()
+            temp_shm.close()
+
+        except FileNotFoundError:
+            pass
 
         self.shm = SharedMemory(
             name=self.name,
@@ -118,7 +127,7 @@ class Publisher:
         self.next_check = 0.0
         self.waiting: Optional[gevent.event.Event] = None
 
-    def publish(self, method: str, params: Optional[Dict[str, Union[str, int, bool]]] = None) -> None:
+    def publish(self, method: str, params: Optional[Mapping[str, Union[str, int, bool, dict, list]]] = None) -> None:
         assert self.circular_buffer is not None
         assert self.circular_buffer.shm is not None
         assert self.circular_buffer.subscribers_shm is not None
@@ -228,6 +237,7 @@ class Subscriber:
 
                 params = msg.get('params', {})
 
+                LOG.debug(f'PubSub Subscriber {self.topic} - handling msg {method}/{params}')
                 self.handler(method, **params)
 
             except gevent.GreenletExit:
@@ -254,6 +264,7 @@ class Reactor:
         self.initialize_circular_buffers(topics)
 
     def initialize_circular_buffers(self, topics: List[Tuple[str,Optional[int]]]):
+        LOG.debug(f'topics: {topics}')
         for topic, num_subscribers in topics:
             if num_subscribers is None:
                 self.circular_buffers[topic] = CircularBuffer(
@@ -293,14 +304,14 @@ class Reactor:
         return s
 
     def wait_interval(self) -> Optional[float]:
+        LOG.debug(f'PubSub Reactor - wait interval')
         waiting_publishers = [p.next_check for p in self.publishers if p.waiting is not None]
         if len(self.subscribers) == 0 and len(waiting_publishers) == 0:
             return None
 
         now = time.time()
         next_check = min(
-            *[s.next_check for s in self.subscribers],
-            *waiting_publishers
+            [s.next_check for s in self.subscribers] + waiting_publishers
         )
         return max(0.0, next_check - now)
 

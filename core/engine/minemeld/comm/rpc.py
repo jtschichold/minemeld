@@ -13,6 +13,7 @@ from zmq.sugar import NOBLOCK, REQ, REP, ROUTER, DEALER, IDENTITY
 
 
 LOG = logging.getLogger(__name__)
+# LOG.setLevel(level=logging.DEBUG)
 
 
 class Dispatcher(Protocol):
@@ -192,6 +193,7 @@ class Server:
         self.context: Optional[zmq.Context] = None
         self.socket: Optional[zmq.Socket] = None
         self.async_results: List[RPCAsyncResult] = []
+        self.active_client_sockets: Dict[str, zmq.Socket] = {}
         self.new_async_result: gevent.event.Event = new_async_result
 
     def _send_sync_result(self, reply_to: bytes, _id: str, result: Optional[Any] = None, error: Optional[str] = None):
@@ -208,16 +210,16 @@ class Server:
 
         LOG.debug(f'RPC Server {self.name} - sending reply {_id} to {reply_to}')
 
-        reply_socket = self.context.socket(DEALER)
-        reply_socket.connect(_endpoint_to_address(self.path, reply_to))
-        reply_socket.setsockopt(IDENTITY, self.name.encode('utf-8'))
-        reply_socket.setsockopt(zmq.LINGER, 0)
+        remote = _endpoint_to_address(self.path, reply_to)
+        reply_socket = self.active_client_sockets.get(remote, None)
+        if reply_socket is None:
+            reply_socket = self.context.socket(DEALER)
+            reply_socket.connect(remote)
+            reply_socket.setsockopt(IDENTITY, self.name.encode('utf-8'))
+            self.active_client_sockets[remote] = reply_socket
+
         reply_socket.send_json(self._build_response(_id, result, error))
         LOG.debug(f'RPC Server {self.name} - sending reply {_id} to {reply_to} - sent')
-
-        reply_socket.close(linger=0)
-
-        LOG.debug(f'RPC Server {self.name} - sending reply {_id} to {reply_to} - done')
 
     def _build_response(self, _id: str, result: Optional[Any] = None, error: Optional[str] = None) -> RPCResponse:
         return {
@@ -230,15 +232,19 @@ class Server:
         ready_results = [ar for ar in self.async_results if ar['async_result'].ready()]
         LOG.debug(f'RPC Server {self.name} - async results ready: {len(ready_results)}')
         if len(ready_results) == 0:
+            LOG.info(f'RPC Server - 0 results')
             return
 
         self.async_results = [ar for ar in self.async_results if not ar['async_result'].ready()]
 
         for ar in ready_results:
             try:
-                ans = ar['async_result'].get()
+                ans = ar['async_result'].get(block=False)
 
             except gevent.greenlet.GreenletExit:
+                raise
+
+            except gevent.Timeout:
                 raise
 
             except Exception as e:
@@ -355,6 +361,10 @@ class Server:
             self.socket.close(linger=0)
             self.socket = None
 
+        for s in self.active_client_sockets.values():
+            s.setsockopt(zmq.LINGER, 0)
+            s.close(linger=0)
+
 
 class Router:
     def __init__(self, name: str, path: str, routing_table: Dict[str, str], handler: RouterCallback, new_async_result: gevent.event.Event, timeout: Optional[float] = 10.0) -> None:
@@ -368,6 +378,7 @@ class Router:
         self.socket: Optional[zmq.Socket] = None
         self.remotes: Dict[str,zmq.Socket] = {}
         self.async_results: List[RPCAsyncResult] = []
+        self.active_client_sockets: Dict[str, zmq.Socket] = {}
         self.new_async_result: gevent.event.Event = new_async_result
 
     def _send_sync_result(self, reply_to: bytes, _id: str, result: Optional[Any] = None, error: Optional[str] = None):
@@ -382,12 +393,15 @@ class Router:
     def _send_async_result(self, reply_to: str, _id: str, result: Optional[Any] = None, error: Optional[str] = None):
         assert self.context is not None
 
-        reply_socket = self.context.socket(DEALER)
-        reply_socket.connect(_endpoint_to_address(self.path, reply_to))
-        reply_socket.setsockopt(zmq.LINGER, 0)
-        reply_socket.setsockopt(IDENTITY, self.name.encode('utf-8'))
+        remote = _endpoint_to_address(self.path, reply_to)
+        reply_socket = self.active_client_sockets.get(remote, None)
+        if reply_socket is None:
+            reply_socket = self.context.socket(DEALER)
+            reply_socket.connect(remote)
+            reply_socket.setsockopt(IDENTITY, self.name.encode('utf-8'))
+            self.active_client_sockets[remote] = reply_socket
+
         reply_socket.send_json(self._build_response(_id, result, error))
-        reply_socket.close(linger=0)
 
     def _build_response(self, _id: str, result: Optional[Any] = None, error: Optional[str] = None) -> RPCResponse:
         return {
@@ -405,9 +419,12 @@ class Router:
 
         for ar in ready_results:
             try:
-                ans = ar['async_result'].get()
+                ans = ar['async_result'].get(block=False)
 
             except gevent.greenlet.GreenletExit:
+                raise
+
+            except gevent.Timeout:
                 raise
 
             except Exception as e:
@@ -543,6 +560,10 @@ class Router:
         for s in self.remotes.values():
             s.close(linger = 0)
         self.remotes = {}
+
+        for s in self.active_client_sockets.values():
+            s.setsockopt(zmq.LINGER, 0)
+            s.close(linger=0)
 
 
 def request(context: zmq.Context, path: str, dest: str, method: str, params: Optional[Dict[str, Union[str, int, bool]]],
