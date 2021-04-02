@@ -69,12 +69,9 @@ class MultiQueue:
                 self.events[i].clear()
                 self.start_wait[i].set()
 
-            LOG.debug(f'MQ: Waiting')
             gevent.wait(objects=self.events, timeout=None, count=1)
-            LOG.debug(f'MQ: Waiting done')
             for i in range(len(self.queues)):
                 if self.events[i].is_set():
-                    LOG.debug(f'MQ: Returning from {i}')
                     return self.queues[i].get()
 
         finally:
@@ -86,10 +83,8 @@ class MultiQueue:
         while True:
             self.start_wait[i].wait()
             self.start_wait[i].clear()
-            LOG.debug(f'MQ:{i} wait')
             self.queues[i].peek()
             self.events[i].set()
-            LOG.debug(f'MQ:{i} set')
 
     def start(self):
         self.glets = [gevent.spawn(self._check_loop, i) for i in range(len(self.queues))]
@@ -111,7 +106,7 @@ class BaseFT:
 
         self.input_checkpoints: Dict[str, str] = {}
 
-        self.msg_queue: MultiQueue = MultiQueue(maxsize=[1, 2048])
+        self.msg_queue: MultiQueue = MultiQueue(maxsize=[1, 1025])
         self.dispatcher_glet: Optional[gevent.Greenlet] = None
 
         self._last_status_publish: Optional[float] = None
@@ -294,7 +289,7 @@ class BaseFT:
         return 'OK'
 
     def receive(self, msg: Message) -> bool:
-        LOG.debug(f'{self.name} - dispatch {msg}')
+        LOG.debug(f'{self.name} - base receive {msg}')
         if msg['method'] == 'checkpoint':
             value: Optional[str] = msg.get('args', {}).get('value', None)
             assert value is not None
@@ -322,27 +317,31 @@ class BaseFT:
     def _dispatcher(self):
         msg: Message
         for msg in self.msg_queue:
+            # LOG.debug(f'{self.name} - dispatching {msg["method"]}')
             if not self.receive(msg):
                 LOG.error(f'{self.name} - Unhandled message {msg}')
 
-    def on_reactor_msg(self, method: str, source: Optional[str] = None, **kwargs) -> Optional[gevent.event.AsyncResult]:
-        LOG.debug(f'{self.name} - recv {method} args: {kwargs}')
+    def on_rpc_reactor_msg(self, method: str, source: Optional[str] = None, **kwargs) -> Optional[gevent.event.AsyncResult]:
         async_answer = gevent.event.AsyncResult()
         if method == 'state_info':
+            LOG.info(f'{self.name} - recv {method} args: {kwargs}')
             async_answer.set(value=self.on_state_info())
             return async_answer
 
         if method == 'status':
+            LOG.info(f'{self.name} - recv {method} args: {kwargs}')
             async_answer.set(value=self.get_status())
             return async_answer
 
         if method == 'init':
+            LOG.info(f'{self.name} - recv {method} args: {kwargs}')
             command: Optional[str] = kwargs.get('command', None)
             assert command is not None
 
             async_answer.set(value=self.on_init(command))
             return async_answer
 
+        LOG.debug(f'{self.name} - queuing {method} args: {kwargs}')
         self.msg_queue.put(
             0 if method in HIGH_PRIORITY_METHODS else 1,
             item={
@@ -352,9 +351,28 @@ class BaseFT:
                 'args': kwargs
             }
         )
-        LOG.debug(f'{self.name} - queued')
+        LOG.debug(f'{self.name} - queued {method} args: {kwargs}')
 
         return async_answer
+
+    def on_pubsub_reactor_msg(self, method: str, source: Optional[str] = None, **kwargs) -> bool:
+        LOG.debug(f'{self.name} - queuing {method} args: {kwargs}')
+        try:
+            self.msg_queue.put(
+                0 if method in HIGH_PRIORITY_METHODS else 1,
+                item={
+                    'source': source,
+                    'async_answer': None,
+                    'method': method,
+                    'args': kwargs
+                },
+                block=False
+            )
+            LOG.debug(f'{self.name} - queued {method} args: {kwargs}')
+            return True
+
+        except gevent.queue.Full:
+            return False
 
     def start_dispatch(self) -> None:
         assert self.dispatcher_glet is None

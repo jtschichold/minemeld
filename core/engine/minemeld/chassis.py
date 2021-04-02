@@ -57,7 +57,6 @@ from minemeld.defaults import DEFAULT_MINEMELD_COMM_PATH
 
 
 LOG = logging.getLogger(__name__)
-# LOG.setLevel(level=logging.DEBUG)
 
 
 class RPCAggregatedAnswer(TypedDict):
@@ -170,7 +169,7 @@ class Chassis:
                 self.pubsub_subscribers.append(self.pubsub_reactor.new_subscriber(
                     subscriber_number=topic_subscribers[i].index(ftname),
                     topic=i,
-                    handler=new_fts[ftname].on_reactor_msg
+                    handler=new_fts[ftname].on_pubsub_reactor_msg
                 ))
 
         # configure nodes
@@ -254,7 +253,7 @@ class Chassis:
         aresults: Dict[str, gevent.event.AsyncResult] = {}
         for nodename, nodeinstance in self.fts.items():
             nodeargs = args.get(nodename, {})
-            nodeanswer = nodeinstance.on_reactor_msg(
+            nodeanswer = nodeinstance.on_rpc_reactor_msg(
                 method=method,
                 **nodeargs
             )
@@ -324,7 +323,7 @@ class Chassis:
         elif method == 'signal':
             if node not in self.fts:
                 result.set_exception(f'chassis:{self.chassis_id} - Unknown node: {node}')
-            return self.fts[node].on_reactor_msg(method='signal', **kwargs)
+            return self.fts[node].on_rpc_reactor_msg(method='signal', **kwargs)
 
         else:
             LOG.error(f'Chassis:{self.chassis_id} - RPC request received for unknown method: {method}')
@@ -365,8 +364,6 @@ class Chassis:
 
             try:
                 wresult = gevent.wait(ars, timeout=timeout, count=1)
-                if len(wresult) == 0:
-                    raise gevent.Timeout()
 
             except gevent.Timeout:
                 pass

@@ -52,5 +52,8 @@ class ChassisNode(Protocol):
     def stop(self) -> None:
         ...
 
-    def on_reactor_msg(self, method: str, source: Optional[str] = None, **kwargs) -> Optional[gevent.event.AsyncResult]:
+    def on_rpc_reactor_msg(self, method: str, source: Optional[str] = None, **kwargs) -> Optional[gevent.event.AsyncResult]:
+        ...
+
+    def on_pubsub_reactor_msg(self, method: str, source: Optional[str] = None, **kwargs) -> bool:
         ...

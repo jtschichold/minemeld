@@ -1,15 +1,21 @@
+import logging
+
 from .base import BaseFT, Message
+
+
+LOG = logging.getLogger(__name__)
 
 
 class Miner(BaseFT):
     def generate(self):
-        for i in range(2000):
+        for i in range(1000000):
             self.publish_update(
-                indicator=i,
+                indicator=f'{self.name}:{i}',
                 value={
-                    'type': 'number'
+                    'type': 'random'
                 }
             )
+        LOG.info(f'{self.name} - done')
 
     def receive(self, msg: Message) -> bool:
         result = super().receive(msg)

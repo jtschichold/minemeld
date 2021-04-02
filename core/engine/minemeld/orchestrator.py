@@ -422,6 +422,7 @@ class Orchestrator:
         while True:
             try:
                 result = self.get_status(timeout=30.0)
+                LOG.info(f'Orchestrator - status: {json.dumps(result)}')
 
             except OrchestratorCmdTimeout:
                 LOG.error('timeout in waiting for status updates from nodes')

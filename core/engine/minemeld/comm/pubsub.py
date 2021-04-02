@@ -26,7 +26,7 @@ LOG = logging.getLogger(__name__)
 
 
 class PubSubHandler(Protocol):
-    def __call__(self, method, **kwargs) -> Any:
+    def __call__(self, method, **kwargs) -> bool:
         ...
 
 
@@ -133,6 +133,7 @@ class Publisher:
         assert self.circular_buffer.subscribers_shm is not None
 
         while self.full():
+            LOG.debug(f'PubSub Publisher {self.topic} - full')
             self.next_check = time.time() + self.wait_slots * 0.01
             self.waiting = gevent.event.Event()
             self.waiting.wait()
@@ -218,10 +219,9 @@ class Subscriber:
         else:
             ranges.append(range(snext, PUB_QUEUE_MAXLEN))
             ranges.append(range(cnext))
-        
-        count = 0
+
+        consumed = 0
         for mn in chain(*ranges):
-            count += 1
             unpacker = msgpack.Unpacker()
             try:
                 boundaries = self.circular_buffer.queue_entry_limits(mn)
@@ -237,8 +237,10 @@ class Subscriber:
 
                 params = msg.get('params', {})
 
-                LOG.debug(f'PubSub Subscriber {self.topic} - handling msg {method}/{params}')
-                self.handler(method, **params)
+                LOG.debug(f'PubSub Subscriber {self.topic}:{self.subscriber_number} - handling msg {method}/{params}')
+                if not self.handler(method, **params):
+                    break
+                consumed += 1
 
             except gevent.GreenletExit:
                 raise
@@ -246,12 +248,12 @@ class Subscriber:
             except Exception:
                 LOG.error('Error handling message: ', exc_info=True)
 
-        LOG.debug(f'consumed: {count}')
+        LOG.debug(f'PubSub Subscriber {self.topic}:{self.subscriber_number} - consumed: {consumed}')
 
-        self.circular_buffer.set_read_next(self.subscriber_number, cnext)
+        self.circular_buffer.set_read_next(self.subscriber_number, (snext + consumed) % PUB_QUEUE_MAXLEN)
         self.next_check = time.time() + self.wait_slots * 0.01
 
-        return True
+        return consumed != 0
 
 
 class Reactor:
@@ -321,12 +323,15 @@ class Reactor:
         if len(waiting_subscribers) != 0:
             random.shuffle(waiting_subscribers)
             for s in waiting_subscribers:
-                if s.consume():
-                    return
+                LOG.debug(f'PubSub Reactor - consuming from {s.topic}:{s.subscriber_number}')
+                while s.consume():
+                    pass
+                LOG.debug(f'PubSub Reactor - consuming from {s.topic}:{s.subscriber_number} - done')
 
         waiting_publishers = [p for p in self.publishers if p.waiting is not None and p.next_check <= now and not p.waiting.is_set()]
         if len(waiting_publishers) != 0:
             p = random.choice(waiting_publishers)
+            LOG.debug(f'PubSub Reactor - waking up publisher {p.topic}')
             assert p.waiting is not None
             p.waiting.set()
 

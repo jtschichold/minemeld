@@ -232,7 +232,6 @@ class Server:
         ready_results = [ar for ar in self.async_results if ar['async_result'].ready()]
         LOG.debug(f'RPC Server {self.name} - async results ready: {len(ready_results)}')
         if len(ready_results) == 0:
-            LOG.info(f'RPC Server - 0 results')
             return
 
         self.async_results = [ar for ar in self.async_results if not ar['async_result'].ready()]
