@@ -9,7 +9,6 @@ LOG = logging.getLogger(__name__)
 
 MM_NODES_ENTRYPOINT = 'minemeld_nodes'
 MM_NODES_GCS_ENTRYPOINT = 'minemeld_nodes_gcs'
-MM_NODES_VALIDATORS_ENTRYPOINT = 'minemeld_nodes_validators'
 MM_PROTOTYPES_ENTRYPOINT = 'minemeld_prototypes'
 MM_API_ENTRYPOINT = 'minemeld_api'
 MM_WEBUI_ENTRYPOINT = 'minemeld_webui'

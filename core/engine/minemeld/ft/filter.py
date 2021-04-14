@@ -4,12 +4,12 @@ import json
 
 from jsonschema import Draft7Validator
 
-from . import ValidateResult
+from . import ValidateResult, MetadataResult, NodeType
 from .base import BaseFT, Message
 from .filters import Filters
 
 
-class FilterNode(BaseFT):
+class FilteringNode(BaseFT):
     def configure(self, config: Dict[str, Any]) -> None:
         super().configure(config)
 
@@ -109,19 +109,28 @@ class FilterNode(BaseFT):
 
         return False
 
+    # metadata
+    schema: Optional[Dict[str, Any]] = None
+
     @staticmethod
     def get_schema() -> Dict[str, Any]:
-        if BaseFT.schema is None:
-            with open(os.path.join(os.path.dirname(__file__), 'schemas', 'base.schema.json'), 'r') as f:
-                BaseFT.schema = json.load(f)
+        if FilteringNode.schema is None:
+            baseft_schema = BaseFT.get_schema()
 
-        return BaseFT.schema
+            with open(os.path.join(os.path.dirname(__file__), 'schemas', 'filteringnode.schema.json'), 'r') as f:
+                FilteringNode.schema = json.load(f)
+            assert FilteringNode.schema is not None
+
+            FilteringNode.schema['properties'].update(baseft_schema['properties'])  # pylint: disable=unsubscriptable-object
+            FilteringNode.schema['$defs'].update(baseft_schema['$defs'])  # pylint: disable=unsubscriptable-object
+
+        return FilteringNode.schema
 
     @staticmethod
     def validate(newconfig: Dict[str, Any], oldconfig: Optional[Dict[str, Any]] = None) -> ValidateResult:
         result: ValidateResult = {}
 
-        v = Draft7Validator(BaseFT.get_schema())
+        v = Draft7Validator(FilteringNode.get_schema())
         result['errors'] = [str(e) for e in v.iter_errors(newconfig)]
 
         if len(result['errors']) != 0 or oldconfig is None:
@@ -130,3 +139,21 @@ class FilterNode(BaseFT):
         result['requires_reinit'] = False
 
         return result
+
+
+class FilteringMiner(FilteringNode):
+    @staticmethod
+    def get_metadata() -> MetadataResult:
+        return {'node_type': NodeType.MINER}
+
+
+class FilteringProcessor(FilteringNode):
+    @staticmethod
+    def get_metadata() -> MetadataResult:
+        return {'node_type': NodeType.PROCESSOR}
+
+
+class FilteringOutput(FilteringNode):
+    @staticmethod
+    def get_metadata() -> MetadataResult:
+        return {'node_type': NodeType.OUTPUT}

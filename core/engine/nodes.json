@@ -1,14 +1,11 @@
 {
     "minemeld.ft.test.Miner": {
-        "class": "minemeld.ft.test:Miner",
-        "validator": "minemeld.ft.validators.test:MinerValidator"
+        "class": "minemeld.ft.test:Miner"
     },
     "minemeld.ft.test.Processor": {
-        "class": "minemeld.ft.test:Processor",
-        "validator": "minemeld.ft.validators.test:ProcessorValidator"
+        "class": "minemeld.ft.test:Processor"
     },
     "minemeld.ft.test.Output": {
-        "class": "minemeld.ft.test:Output",
-        "validator": "minemeld.ft.validators.test:OutputValidator"
+        "class": "minemeld.ft.test:Output"
     }
 }

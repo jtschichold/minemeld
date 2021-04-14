@@ -408,7 +408,7 @@ class BaseFT(ChassisNode, MetadataNode):
     @staticmethod
     def get_schema() -> Dict[str, Any]:
         if BaseFT.schema is None:
-            with open(os.path.join(os.path.dirname(__file__), 'schemas', 'base.schema.json'), 'r') as f:
+            with open(os.path.join(os.path.dirname(__file__), 'schemas', 'baseft.schema.json'), 'r') as f:
                 BaseFT.schema = json.load(f)
 
         return BaseFT.schema

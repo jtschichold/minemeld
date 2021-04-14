@@ -12,11 +12,11 @@ import logging
 import gevent.core
 
 import minemeld.loader
+from minemeld.ft import MetadataResult, NodeType
 
 # Types
 TMineMeldNodeConfig = TypedDict('TMineMeldNodeConfig', {
     'inputs': List[str],
-    'output': bool,
     'prototype': str,
     'class': str,
     'config': Dict[str, Any]
@@ -48,10 +48,8 @@ class MineMeldConfigChange(_ConfigChange):
     DELETED = 1
     INPUT_ADDED = 2
     INPUT_DELETED = 3
-    OUTPUT_ENABLED = 4
-    OUTPUT_DISABLED = 5
-    CONFIG_HUP = 6
-    CONFIG_REINIT = 7
+    CONFIG_HUP = 4
+    CONFIG_REINIT = 5
 
     def __new__(_cls, nodename, nodeclass, change, detail=None):
         return _ConfigChange.__new__(
@@ -84,7 +82,7 @@ class MineMeldConfig(_Config):
                 )
             return
 
-        validators = minemeld.loader.map(minemeld.loader.MM_NODES_VALIDATORS_ENTRYPOINT)
+        nodes_entrypoints = minemeld.loader.map(minemeld.loader.MM_NODES_ENTRYPOINT)
 
         my_nset = self.as_nset()
         other_nset = oconfig.as_nset()
@@ -138,32 +136,18 @@ class MineMeldConfig(_Config):
                 )
                 self.changes.append(change)
 
-            my_output = self.nodes[nodename].get('output', False)
-            other_output = oconfig.nodes[nodename].get('output', False)
-            if my_output != other_output:
-                change_type = MineMeldConfigChange.OUTPUT_DISABLED
-                if my_output:
-                    change_type = MineMeldConfigChange.OUTPUT_ENABLED
-
-                change = MineMeldConfigChange(
-                    nodename=nodename,
-                    nodeclass=nodeclass,
-                    change=change_type
-                )
-                self.changes.append(change)
-
             my_config = self.nodes[nodename].get('config', {})
             other_config = oconfig.nodes[nodename].get('config', {})
             if my_config == oconfig:
                 continue
 
-            vep = validators.get(nodeclass)
-            if vep is None:
-                LOG.warning(f'No validator for {nodeclass}')
+            node_ep = nodes_entrypoints.get(nodeclass)
+            if node_ep is None:
+                LOG.warning(f'No entrypoint for {nodeclass}')
                 continue
-            validator = vep.ep.load()
+            node_class = node_ep.ep.load()
 
-            vresult = validator(my_config, other_config)
+            vresult = node_class.validate(my_config, other_config)
             if len(vresult.get('errors', [])) != 0:
                 raise RuntimeError('Invalid config in change detection!')
 
@@ -184,18 +168,8 @@ class MineMeldConfig(_Config):
             if re.match(r'^[a-zA-Z0-9_\-]+$', n) is None:  # pylint:disable=W1401
                 result.append('%s node name is invalid' % n)
 
-        for n, v in nodes.items():
-            for i in v.get('inputs', []):
-                if i not in nodes:
-                    result.append('%s -> %s is unknown' % (n, i))
-                    continue
-
-                if not nodes[i].get('output', False):
-                    result.append('%s -> %s output disabled' %
-                                  (n, i))
-
+        node_types: Dict[str, NodeType] = {}
         installed_nodes = minemeld.loader.map(minemeld.loader.MM_NODES_ENTRYPOINT)
-        validators = minemeld.loader.map(minemeld.loader.MM_NODES_VALIDATORS_ENTRYPOINT)
         for n, v in nodes.items():
             nclass = v.get('class', None)
             if nclass is None:
@@ -215,14 +189,39 @@ class MineMeldConfig(_Config):
                 )
                 continue
 
-            vep = validators.get(nclass, None)
-            if vep is None:
-                LOG.warning(f'No validator for {nclass}')
-                continue
-            validator = vep.ep.load()
-            vresult = validator.validate(v.get('config', {}))
+            node_class = mmep.ep.load()
+            node_types[node_class] = node_class.get_metadata()['node_type']
+            vresult = node_class.validate(v.get('config', {}))
             for verror in vresult.get('errors', []):
                 result.append(f'Invalid config for node {n}: {verror}')
+
+        for n, v in nodes.items():
+            v_class = v.get('class', None)
+            if v_class is None:
+                continue
+    
+            v_inputs = v.get('inputs', [])
+            if v_class not in node_types:
+                continue
+
+            if node_types[v_class] == NodeType.MINER and len(v_inputs) != 0:
+                result.append(f'{n} - Miner with inputs')
+                continue
+
+            for i in v_inputs:
+                if i not in node_types:
+                    continue
+                
+                if node_types[]
+
+            for i in v.get('inputs', []):
+                if i not in nodes:
+                    result.append('%s -> %s is unknown' % (n, i))
+                    continue
+
+                if not nodes[i].get('output', False):
+                    result.append('%s -> %s output disabled' %
+                                  (n, i))
 
         if not detect_cycles(nodes):
             result.append('loop detected')

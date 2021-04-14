@@ -36,7 +36,7 @@ gevent.monkey.patch_all(thread=False, select=False)
 import zmq.green as zmq
 
 from minemeld.ft import (
-    ChassisNode, factory as node_factory, ft_states
+    ChassisNode, factory as node_factory, FTState
 )
 from minemeld.config import MineMeldConfig
 from minemeld.comm.rpc import (
@@ -387,7 +387,7 @@ class Chassis:
 
     def fts_init(self) -> bool:
         for ft in self.fts.values():
-            if ft.state < ft_states.INIT:
+            if ft.state.value < FTState.INIT.value:
                 return False
         return True
 

@@ -4,5 +4,6 @@
     "description": "Config schema for minemeld.ft.base.BaseFT class",
     "type": "object",
     "required": [],
-    "properties": {}
+    "properties": {},
+    "additionalProperties": false
 }
