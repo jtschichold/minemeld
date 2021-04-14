@@ -1,7 +1,7 @@
 {
-    "$id": "https://github.com/PaloAltoNetworks/minemeld/ft/base.schema.json",
+    "$id": "https://github.com/PaloAltoNetworks/minemeld/ft/schemas/filter.schema.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "description": "Config schema for minemeld.ft.base.BaseFT class",
+    "description": "Config schema for minemeld.ft.filter.FilterNode class",
     "type": "object",
     "required": [],
     "properties": {

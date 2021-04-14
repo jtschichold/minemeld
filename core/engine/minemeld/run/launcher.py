@@ -12,6 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import minemeld
+minemeld.IS_ENGINE = True
 
 from minemeld import __version__
 import psutil
@@ -31,6 +33,9 @@ import gevent
 import gevent.signal
 import gevent.monkey
 gevent.monkey.patch_all(thread=False, select=False)
+
+import minemeld
+minemeld.IS_ENGINE = True
 
 from minemeld.chassis import Chassis
 from minemeld.orchestrator import Orchestrator

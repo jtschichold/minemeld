@@ -1,6 +1,7 @@
 import logging
 
 from .base import BaseFT, Message
+from . import MetadataResult, NodeType
 
 
 LOG = logging.getLogger(__name__)
@@ -37,6 +38,11 @@ class Miner(BaseFT):
             'args': {}
         })
 
+    @staticmethod
+    def get_metadata() -> MetadataResult:
+        return {'node_type': NodeType.MINER}
+
+
 class Processor(BaseFT):
     def receive(self, msg: Message) -> bool:
         result = super().receive(msg)
@@ -55,6 +61,10 @@ class Processor(BaseFT):
 
         return False
 
+    @staticmethod
+    def get_metadata() -> MetadataResult:
+        return {'node_type': NodeType.PROCESSOR}
+
 
 class Output(BaseFT):
     def receive(self, msg: Message) -> bool:
@@ -71,3 +81,7 @@ class Output(BaseFT):
             return True
 
         return False
+
+    @staticmethod
+    def get_metadata() -> MetadataResult:
+        return {'node_type': NodeType.OUTPUT}

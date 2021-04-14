@@ -1,0 +1,8 @@
+{
+    "$id": "https://github.com/PaloAltoNetworks/minemeld/ft/schemas/base.schema.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "Config schema for minemeld.ft.base.BaseFT class",
+    "type": "object",
+    "required": [],
+    "properties": {}
+}

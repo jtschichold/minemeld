@@ -1,4 +1,8 @@
-from typing import Protocol, Optional, TYPE_CHECKING
+from enum import Enum
+from typing import (
+    Protocol, Optional, TYPE_CHECKING,
+    Dict, Any, List, TypedDict
+)
 
 import gevent.event
 
@@ -20,7 +24,7 @@ def factory(classname: str, name: str, chassis: 'Chassis', num_inputs: int):
     )
 
 
-class ft_states:
+class FTState(Enum):
     READY = 0
     CONNECTED = 1
     REBUILDING = 2
@@ -33,11 +37,11 @@ class ft_states:
 
 
 class ChassisNode(Protocol):
-    state: int
+    state: FTState
     def __init__(self, name: str, chassis: 'Chassis', num_inputs: int):
         ...
 
-    def configure(self, config: TMineMeldNodeConfig) -> None:
+    def configure(self, config: Dict[str, Any]) -> None:
         ...
 
     def connect(self, p: Publisher) -> None:
@@ -56,4 +60,33 @@ class ChassisNode(Protocol):
         ...
 
     def on_pubsub_reactor_msg(self, method: str, source: Optional[str] = None, **kwargs) -> bool:
+        ...
+
+
+class ValidateResult(TypedDict, total=False):
+    errors: List[str]
+    requires_reinit: bool
+
+
+class NodeType(Enum):
+    MINER = 1
+    PROCESSOR = 2
+    OUTPUT = 3
+
+
+class MetadataResult(TypedDict):
+    node_type: NodeType
+
+
+class MetadataNode(Protocol):
+    @staticmethod
+    def get_metadata() -> MetadataResult:
+        ...
+
+    @staticmethod
+    def get_schema() -> Dict[str, Any]:
+        ...
+
+    @staticmethod
+    def validate(newconfig: Dict[str, Any], oldconfig: Optional[Dict[str, Any]] = None) -> ValidateResult:
         ...

@@ -3,16 +3,19 @@ from typing import (
 )
 from collections import deque, defaultdict
 import logging
+import json
+import os.path
 
 import gevent
 import gevent.queue
 import gevent.event
+from jsonschema import Draft7Validator
 
 from minemeld.chassis import Chassis
 from minemeld.comm.pubsub import Publisher
 from minemeld.config import TMineMeldNodeConfig
 
-from . import ft_states, ChassisNode
+from . import FTState, ChassisNode, MetadataNode, ValidateResult, MetadataResult, NodeType
 from .utils import utc_millisec, GThrottled
 
 
@@ -95,14 +98,15 @@ class MultiQueue:
                 g.kill()
 
 
-class BaseFT:
+class BaseFT(ChassisNode, MetadataNode):
     def __init__(self, name: str, chassis: Chassis, num_inputs: int):
         self.name = name
         self.chassis = chassis
         self.num_inputs = num_inputs
 
-        self.state = ft_states.READY
+        self.state = FTState.READY
         self.last_checkpoint: Optional[str] = None
+        self.last_checkpoint_config: Dict[str, Any] = {}
 
         self.input_checkpoints: Dict[str, str] = {}
 
@@ -119,16 +123,16 @@ class BaseFT:
 
         self.load_checkpoint()
 
-    def set_state(self, new_state: int) -> None:
-        LOG.info(f'{self.name} - state change {self.state} -> {new_state}')
+    def set_state(self, new_state: FTState) -> None:
+        LOG.info(f'{self.name} - state change {self.state.name} -> {new_state.name}')
         self.state = new_state
         self.publish_status(force=True)
 
-    def configure(self, config: TMineMeldNodeConfig) -> None:
+    def configure(self, config: Dict[str, Any]) -> None:
         if self.should_reset(config):
             # we should be receiving a resetting config
             # at startup
-            assert self.state == ft_states.READY
+            assert self.state == FTState.READY
             self.last_checkpoint = None
             self.reset_checkpoint()
 
@@ -206,8 +210,9 @@ class BaseFT:
         )
 
     # should reset checkpoint
-    def should_reset(self, config: TMineMeldNodeConfig) -> bool:
-        return True
+    def should_reset(self, config: Dict[str, Any]) -> bool:
+        vresult = self.validate(config, self.last_checkpoint_config)
+        return vresult['requires_reinit']
 
     def load_checkpoint(self) -> None:
         pass
@@ -261,13 +266,13 @@ class BaseFT:
         elif next_state == 'initialize':
             self.initialize()
 
-        self.set_state(ft_states.INIT)
+        self.set_state(FTState.INIT)
         self.remove_checkpoint()
 
         return 'OK'
 
     def on_checkpoint(self, source: Optional[str], value: str) -> str:
-        assert self.state in [ft_states.CHECKPOINT, ft_states.STARTED]
+        assert self.state in [FTState.CHECKPOINT, FTState.STARTED]
 
         LOG.debug(f'{self.name} - on_checkpoint: {source} {value}')
         if self.num_inputs != 0:
@@ -278,10 +283,10 @@ class BaseFT:
 
             self.input_checkpoints[source] = value
             if len(self.input_checkpoints) != self.num_inputs:
-                self.set_state(ft_states.CHECKPOINT)
+                self.set_state(FTState.CHECKPOINT)
                 return 'in progress'
 
-        self.set_state(ft_states.IDLE)
+        self.set_state(FTState.IDLE)
         self.create_checkpoint(value)
         self.last_checkpoint = value
         self.publish_checkpoint(value)
@@ -383,16 +388,41 @@ class BaseFT:
         self.dispatcher_glet = gevent.spawn(self._dispatcher)
 
     def start(self) -> None:
-        assert self.state == ft_states.INIT
+        assert self.state == FTState.INIT
 
-        self.set_state(ft_states.STARTED)
+        self.set_state(FTState.STARTED)
 
     def stop(self) -> None:
-        assert self.state in [ft_states.STARTED, ft_states.IDLE]
+        assert self.state in [FTState.STARTED, FTState.IDLE]
 
         self.msg_queue.stop()
         if self.dispatcher_glet is not None:
             self.dispatcher_glet.kill()
             self.dispatcher_glet = None
 
-        self.state = ft_states.STOPPED
+        self.state = FTState.STOPPED
+
+    # metadata
+    schema: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def get_schema() -> Dict[str, Any]:
+        if BaseFT.schema is None:
+            with open(os.path.join(os.path.dirname(__file__), 'schemas', 'base.schema.json'), 'r') as f:
+                BaseFT.schema = json.load(f)
+
+        return BaseFT.schema
+
+    @staticmethod
+    def validate(newconfig: Dict[str, Any], oldconfig: Optional[Dict[str, Any]] = None) -> ValidateResult:
+        result: ValidateResult = {}
+
+        v = Draft7Validator(BaseFT.get_schema())
+        result['errors'] = [str(e) for e in v.iter_errors(newconfig)]
+
+        if len(result['errors']) != 0 or oldconfig is None:
+            return result
+
+        result['requires_reinit'] = False
+
+        return result
