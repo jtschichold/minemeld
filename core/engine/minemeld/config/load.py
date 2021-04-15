@@ -40,22 +40,23 @@ def load_and_validate_config_from_file(path: str) -> Tuple[bool, Optional['MineM
     valid = False
     config = None
 
-    if os.path.isfile(path):
-        try:
-            with open(path, 'r') as cf:
-                valid, config = _load_config_from_file(path, cf)
-            if not valid:
-                LOG.error('Invalid config file {}'.format(path))
-        except (RuntimeError, IOError):
-            LOG.exception(
-                'Error loading config {}, config ignored'.format(path)
-            )
-            valid, config = False, None
+    try:
+        with open(path, 'r') as cf:
+            valid, config = _load_config_from_file(path, cf)
+        if not valid:
+            LOG.error(f'Invalid config file {path}')
+    except (RuntimeError, IOError):
+        LOG.exception(
+            f'Error loading config {path}, config ignored'
+        )
+        valid, config = False, None
 
     if valid and config is not None:
+        LOG.debug('Resolving config')
         valid = resolve(config)
 
     if valid and config is not None:
+        LOG.debug('validating config')
         vresults = config.validate()
         if len(vresults) != 0:
             LOG.error('Invalid config {}: {}'.format(

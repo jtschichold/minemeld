@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import IntEnum, Enum
 from typing import (
     Protocol, Optional, TYPE_CHECKING,
     Dict, Any, List, TypedDict
@@ -8,7 +8,6 @@ import gevent.event
 
 from minemeld.loader import load, MM_NODES_ENTRYPOINT
 from minemeld.comm.pubsub import Publisher
-from minemeld.config import TMineMeldNodeConfig
 
 if TYPE_CHECKING:
     from minemeld.chassis import Chassis
@@ -24,7 +23,7 @@ def factory(classname: str, name: str, chassis: 'Chassis', num_inputs: int):
     )
 
 
-class FTState(Enum):
+class FTState(IntEnum):
     READY = 0
     CONNECTED = 1
     REBUILDING = 2

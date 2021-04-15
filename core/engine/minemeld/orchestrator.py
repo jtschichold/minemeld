@@ -21,7 +21,7 @@ from minemeld.comm.rpc import (
     Dispatcher as RPCDispatcher,
     RPCRequestParams
 )
-from minemeld.ft import ft_states
+from minemeld.ft import FTState
 from minemeld.pmcollectd import PMCollectdClient
 from minemeld.defaults import (
     DEFAULT_REDIS_URL, DEFAULT_MINEMELD_COMM_PATH,
@@ -300,7 +300,7 @@ class Orchestrator:
                 gevent.sleep(60)
                 continue
 
-            all_started = next((False for a in state_info.values() if a.get('state', None) != ft_states.STARTED), True)
+            all_started = next((False for a in state_info.values() if a.get('state', None) != FTState.STARTED), True)
             if not all_started:
                 LOG.error('some nodes not started yet, waiting')
                 gevent.sleep(60)

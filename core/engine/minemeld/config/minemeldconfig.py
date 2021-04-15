@@ -190,38 +190,30 @@ class MineMeldConfig(_Config):
                 continue
 
             node_class = mmep.ep.load()
-            node_types[node_class] = node_class.get_metadata()['node_type']
+            node_types[n] = node_class.get_metadata()['node_type']
             vresult = node_class.validate(v.get('config', {}))
             for verror in vresult.get('errors', []):
                 result.append(f'Invalid config for node {n}: {verror}')
 
         for n, v in nodes.items():
-            v_class = v.get('class', None)
-            if v_class is None:
-                continue
-    
             v_inputs = v.get('inputs', [])
-            if v_class not in node_types:
+            if n not in node_types:
                 continue
 
-            if node_types[v_class] == NodeType.MINER and len(v_inputs) != 0:
+            if node_types[n] == NodeType.MINER and len(v_inputs) != 0:
                 result.append(f'{n} - Miner with inputs')
                 continue
 
             for i in v_inputs:
+                if i not in nodes:
+                    result.append(f'{n} -> input {i} is unknown')
+                    continue
+
                 if i not in node_types:
                     continue
                 
-                if node_types[]
-
-            for i in v.get('inputs', []):
-                if i not in nodes:
-                    result.append('%s -> %s is unknown' % (n, i))
-                    continue
-
-                if not nodes[i].get('output', False):
-                    result.append('%s -> %s output disabled' %
-                                  (n, i))
+                if node_types[i] == NodeType.OUTPUT:
+                    result.append(f'{n} -> input {i} is of type {node_types[i].name}')
 
         if not detect_cycles(nodes):
             result.append('loop detected')

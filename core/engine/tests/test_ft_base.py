@@ -42,7 +42,7 @@ class MineMeldFTBaseTests(unittest.TestCase):
         self.assertCountEqual(b.inputs, [])
         self.assertEqual(b.output, None)
         self.assertEqual(b.configure.call_count, 1)
-        self.assertEqual(b.state, minemeld.ft.ft_states.READY)
+        self.assertEqual(b.state, minemeld.ft.FTState.READY)
 
     def test_connect_io(self):
         ftname = 'test'
